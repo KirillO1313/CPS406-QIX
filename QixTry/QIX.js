@@ -131,3 +131,5 @@ function stopMovement() {
   PspeedY = 0;
   currentDirection = null; // Clear direction
 }
+
+// this is just a check to push

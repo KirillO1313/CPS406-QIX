@@ -1,11 +1,13 @@
-let player;
 let gameField;
-let borderL;
-let borderU;
-let borderR;
-let borderD;
+let Borders;
+// [0] LEFT;
+// [1] RIGTH;
+// [2] TOP;
+// [3] BOTTOM;
 
+let player;
 let qix;
+let sparc;
 
 let color;
 let pallete = ["#D88C9A", "#B6EFD4", "#fdffb6", "#8E7DBE", "#A0CCDA"];
@@ -23,7 +25,7 @@ function setup() {
   world.gravity.y = 0;
   world.gravity.x = 0;
 
-  //---GAME FIELD ADN BORDERS---
+  //---GAME FIELD AND BORDERS---
   gameField = new Sprite();
     gameField.x = windowWidth / 2;
     gameField.y = windowHeight / 2;
@@ -31,37 +33,27 @@ function setup() {
     gameField.h = windowHeight - (windowHeight / 8);
     gameField.color = random(pallete);
 
-  borderL = new Sprite();
-    borderL.collider = 'k';
-    borderL.visible = false;
-    borderL.x = gameField.x - gameField.w/2;
-    borderL.y = gameField.y;
-    borderL.w = 0.1;
-    borderL.h = gameField.h;
-
-  borderU = new Sprite();
-    borderU.collider = 'k';
-    borderU.visible = false;
-    borderU.x = gameField.x ;
-    borderU.y = gameField.y - gameField.h/2;
-    borderU.w = gameField.w;
-    borderU.h = 0.1;
-
-  borderR = new Sprite();
-    borderR.collider = 'k';
-    borderR.visible = false;
-    borderR.x = gameField.x + gameField.w/2;
-    borderR.y = gameField.y;
-    borderR.w = 0.1;
-    borderR.h = gameField.h;
-
-  borderD = new Sprite();
-    borderD.collider = 'k';
-    borderD.visible = false;
-    borderD.x = gameField.x ;
-    borderD.y = gameField.y + gameField.h/2;
-    borderD.w = gameField.w;
-    borderD.h = 0.1;
+  Borders = new Group();
+    Borders.collider = 'k';
+    Borders.visible = false;
+  while( Borders.length < 2){ //make default left border
+    let ogBorder = new Borders.Sprite();
+    ogBorder.x = gameField.x - gameField.w/2;
+    ogBorder.y = gameField.y;
+    ogBorder.w = 0.1;
+    ogBorder.h = gameField.h;
+  }
+    //right border
+    Borders[1].x = gameField.x + gameField.w/2;
+    while( Borders.length < 4){ //make default top border
+      let ogBorder = new Borders.Sprite();
+      ogBorder.x = gameField.x ;
+      ogBorder.y = gameField.y  - gameField.h/2;
+      ogBorder.w = gameField.w;
+      ogBorder.h = 0.1;
+    }
+    //bottom border
+    Borders[3].y = gameField.y + gameField.h/2;   
 
 
 //--PLAYER AND ENEMIES---
@@ -81,20 +73,36 @@ function setup() {
     qix.h = 25;
     qix.rotation = 45;
     qix.rotationLock = true;
+    qix.color = "#a71d31"
     qix.collider = "d";
     qix.bounciness = 1;
     qix.velocity.x = random(-2, 2);
     qix.velocity.y = random(-2, 2);
 
+  sparc = new Sprite();
+    sparc.x = gameField.x;
+    sparc.y = gameField.y - gameField.h / 2 
+    sparc.w = 15;
+    sparc.h = 15;
+    sparc.color = "#706993"
+    sparc.collider = "k";
+
+
+  //---Layering---
   player.overlaps(gameField);
   qix.overlaps(gameField);
-  borderL.overlaps(gameField);
-  borderU.overlaps(gameField);
-  borderR.overlaps(gameField);
-  borderD.overlaps(gameField);
+  sparc.overlaps(gameField);
+  sparc.overlaps(Borders[0]);
+  sparc.overlaps(Borders[1]);
+  sparc.overlaps(Borders[2]);
+  sparc.overlaps(Borders[3]);
 
-  borderR.overlaps(borderD);
-  borderU.overlaps(borderR);
+  Borders[0].overlaps(gameField);
+  Borders[2].overlaps(gameField);
+  Borders[1].overlaps(gameField);
+  Borders[3].overlaps(gameField);
+  Borders[1].overlaps(Borders[3]);
+  Borders[2].overlaps(Borders[1]);
   
 }
 

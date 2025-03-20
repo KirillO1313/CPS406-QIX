@@ -91,7 +91,7 @@ function setup() {
     sparc.h = 15;
     sparc.color = "#706993"
     sparc.collider = "k";
-    sparc.velocity.x = 2;
+    sparc.velocity.x = 0;
     sparc.velocity.y = 0;
     
 
@@ -146,7 +146,7 @@ function draw() {
   }
 
   //---SPARC MOVEMENT RULES---
-  sparc.overlapped(Borders, sparcDirChange(currentSparcDirection));
+  //sparc.overlapped(Borders, sparcDirChange(currentSparcDirection));
 
 
 }
@@ -185,22 +185,41 @@ function keyReleased() {
   }
 }
 
-function sparcDirChange(direction){
-  if (direction === 'horizontal'){
-    //some test to deterimine if 
-    // need to go up or down
+// function sparcDirChange(direction){
+//   if (direction === 'horizontal'){
+//     sparc.x-= sparc.velocity.x;
+//     sparc.velocity.x = 0; // reset to last frame and stop moving
+    
 
-    currentSparcDirection = 'vertical';
-  }
-  else {
-    //some test to deterimine if 
-    // need to go left or rigth
+//     /// the idea is to make a temporary tester sprite, see if up
+//     //  is the correct direction by moving it slightly up, if it overlaps, set 
+//     // the velocity of sparc accordingly, if not not  set the velocity of sparc accordingly
+//     let testUp = new Sprite();
+//       testUp.visible = false;
+//       testUp.x = sparc.x;
+//       testUp.y = sparc.y - 2; //started moving up
+//       testUp.w = 0.1;
+//       testUp.h = 0.1;
+    
+//    //some test to deterimine if 
+//     // need to go up or down
+    
+   
 
-    currentSparcDirection = 'horizontal'; 
-  }
+//     currentSparcDirection = 'vertical';
+//   }
+//   else {
+//     sparc.y-= sparc.velocity.y;// reset to last frame 
+//     sparc.velocity.y = 0; //and stop moving
+//     //some test to deterimine if 
+//     // need to go left or right
 
-  console.log('sparcdir change: ', currentSparcDirection);
-}
+
+//     currentSparcDirection = 'horizontal'; 
+//   }
+
+//   console.log('sparcdir change: ', currentSparcDirection);
+// }
 
 // Helper function to set direction and update speeds
 function setPlayerDirection(direction) {

@@ -123,7 +123,7 @@ function draw() {
   player.x = constrain(player.x, windowWidth / 2 - gameField.w / 2, windowWidth / 2 + gameField.w / 2);
   player.y = constrain(player.y, windowHeight / 2 - gameField.h / 2, windowHeight / 2 + gameField.h / 2);
 
-  // Display direction info
+  //---Display directions/info---
   push();
   textSize(20);
   text('↑', width * 0.9, height - (height * 0.3));

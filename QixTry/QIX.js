@@ -104,12 +104,8 @@ function setup() {
   sparc.overlaps(Borders[2]);
   sparc.overlaps(Borders[3]);
 
-  Borders[0].overlaps(gameField);
-  Borders[2].overlaps(gameField);
-  Borders[1].overlaps(gameField);
-  Borders[3].overlaps(gameField);
-  Borders[1].overlaps(Borders[3]);
-  Borders[2].overlaps(Borders[1]);
+  Borders.overlaps(gameField);
+  Borders.overlaps(Borders);
   
 }
 

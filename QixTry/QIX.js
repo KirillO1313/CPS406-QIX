@@ -16,6 +16,7 @@ let qix;
 
 let sparc;
 let currentSparcDirection = 'horizontal'; 
+let sparcSpeed = 2;
 
 let color;
 let pallete = ["#D88C9A", "#B6EFD4", "#fdffb6", "#8E7DBE", "#A0CCDA"];
@@ -91,19 +92,19 @@ function setup() {
     sparc.h = 15;
     sparc.color = "#706993"
     sparc.collider = "k";
-    sparc.velocity.x = 0;
+    sparc.velocity.x = 2;
     sparc.velocity.y = 0;
     
 
   //---Layering---
   player.overlaps(gameField);
   qix.overlaps(gameField);
+
   sparc.overlaps(gameField);
   sparc.overlaps(Borders);
 
   Borders.overlaps(gameField);
-  Borders.overlaps(Borders);
-  
+  Borders.overlaps(Borders);  
 }
 
 function draw() {
@@ -139,8 +140,16 @@ function draw() {
   }
 
   //---SPARC MOVEMENT RULES---
-  //sparc.overlapped(Borders, sparcDirChange(currentSparcDirection));
-
+  //if sparc overlaps multiple borders, its time to change route;
+  let sparcPathVal = 0;
+  for (let border of Borders){ 
+    if (sparc.overlaps(border)){
+      sparcPathVal++;
+    }
+  }
+  if (sparcPathVal > 1){ //multiple paths detected
+    sparcDirChange(currentSparcDirection)
+  }
 
 }
 
@@ -178,41 +187,44 @@ function keyReleased() {
   }
 }
 
-// function sparcDirChange(direction){
-//   if (direction === 'horizontal'){
-//     sparc.x-= sparc.velocity.x;
-//     sparc.velocity.x = 0; // reset to last frame and stop moving
+function sparcDirChange(direction){
+  if (direction === 'horizontal'){
+    sparc.velocity.x = 0; //stop moving
     
+        // the idea is to make a temporary tester sprite, see if up
+        //  is the correct direction by moving it slightly up, if it overlaps, set 
+        // the velocity of sparc accordingly
+    let testUp = new Sprite();
+      testUp.visible = false;
+      testUp.x = sparc.x;
+      testUp.y = sparc.y - 2; //started moving up
+      testUp.w = 0.1;
+      testUp.h = 0.1;
+    //setting velocity accordingly
+    let sparcDirSetter = 1;
+    if (testUp.overlaps(Borders)){
+      sparcDirSetter = -1;
+    }
+    sparc.velocity.y = sparcDirSetter*sparcSpeed ;
+    currentSparcDirection = 'vertical';
+  }
 
-//     /// the idea is to make a temporary tester sprite, see if up
-//     //  is the correct direction by moving it slightly up, if it overlaps, set 
-//     // the velocity of sparc accordingly, if not not  set the velocity of sparc accordingly
-//     let testUp = new Sprite();
-//       testUp.visible = false;
-//       testUp.x = sparc.x;
-//       testUp.y = sparc.y - 2; //started moving up
-//       testUp.w = 0.1;
-//       testUp.h = 0.1;
-    
-//    //some test to deterimine if 
-//     // need to go up or down
-    
+  else {
+    sparc.y-= sparc.velocity.y;// reset to last frame 
+    sparc.velocity.y = 0; //and stop moving
    
-
-//     currentSparcDirection = 'vertical';
-//   }
-//   else {
-//     sparc.y-= sparc.velocity.y;// reset to last frame 
-//     sparc.velocity.y = 0; //and stop moving
-//     //some test to deterimine if 
-//     // need to go left or right
+    //some test to deterimine if 
+    // need to go left or right
 
 
-//     currentSparcDirection = 'horizontal'; 
-//   }
+    //setting velocity accordingly
 
-//   console.log('sparcdir change: ', currentSparcDirection);
-// }
+
+    currentSparcDirection = 'horizontal'; 
+  }
+
+  console.log('sparcdir change: ', currentSparcDirection);
+}
 
 // Helper function to set direction and update speeds
 function setPlayerDirection(direction) {

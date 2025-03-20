@@ -99,10 +99,7 @@ function setup() {
   player.overlaps(gameField);
   qix.overlaps(gameField);
   sparc.overlaps(gameField);
-  sparc.overlaps(Borders[0]);
-  sparc.overlaps(Borders[1]);
-  sparc.overlaps(Borders[2]);
-  sparc.overlaps(Borders[3]);
+  sparc.overlaps(Borders);
 
   Borders.overlaps(gameField);
   Borders.overlaps(Borders);

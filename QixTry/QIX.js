@@ -14,8 +14,7 @@ const DIRECTION_COOLDOWN = 200; // Cooldown in milliseconds (adjustable)
 
 let qix;
 
-let sparc;
-let currentSparcDirection = 'horizontal'; 
+let sparx;
 let sparcSpeed = 2;
 
 let color;
@@ -45,7 +44,7 @@ function setup() {
     let ogBorder = new Borders.Sprite();
     ogBorder.x = gameField.x - gameField.w/2;
     ogBorder.y = gameField.y;
-    ogBorder.w = 0.1;
+    ogBorder.w = 1;
     ogBorder.h = gameField.h;
   }
     //right border
@@ -56,7 +55,7 @@ function setup() {
       ogBorder.x = gameField.x ;
       ogBorder.y = gameField.y  - gameField.h/2;
       ogBorder.w = gameField.w;
-      ogBorder.h = 0.1;
+      ogBorder.h = 1;
     }
     //bottom border
     Borders[3].y = gameField.y + gameField.h/2;   
@@ -85,23 +84,26 @@ function setup() {
     qix.velocity.x = random(-2, 2);
     qix.velocity.y = random(-2, 2);
 
-  sparc = new Sprite();
-    sparc.x = gameField.x;
-    sparc.y = gameField.y - gameField.h / 2 
-    sparc.w = 15;
-    sparc.h = 15;
-    sparc.color = "#706993"
-    sparc.collider = "k";
-    sparc.velocity.x = 0;
-    sparc.velocity.y = 0;
+  sparx = new Group();
+    sparx.x = gameField.x;
+    sparx.y = gameField.y - gameField.h / 2 
+    sparx.w = 15;
+    sparx.h = 15;
+    sparx.color = "#706993"
+    sparx.collider = "k";
+    sparx.velocity.x = sparcSpeed;
+    sparx.velocity.y = 0;
+    sparx.direction = 'horizontal'; 
+  
+    let sparc = new sparx.Sprite();
     
 
   //---Layering---
   player.overlaps(gameField);
   qix.overlaps(gameField);
 
-  sparc.overlaps(gameField);
-  sparc.overlaps(Borders);
+  sparx.overlaps(gameField);
+  sparx.overlaps(Borders);
 
   Borders.overlaps(gameField);
   Borders.overlaps(Borders);  
@@ -139,98 +141,86 @@ function draw() {
   qix.vel.y =  random(-2, 1); 
   }
 
-  //---SPARC MOVEMENT RULES---
-  //if sparc overlaps multiple borders, its time to change route;
+  //---SPARC MOVEMENT---
+  for (const sparc of sparx) { //doesnt work :/
+    updateSparc(sparc);
+  }  
+
+}
+
+//---SPARX MOVEMENTS---
+function  updateSparc(sparc){
   let sparcPathVal = 0;
-  
-  for (let border of Borders){                     //does NOt
-    if (sparc.overlaps(border)) sparcPathVal++;     //work :/
+  for (let border of Borders){                       
+    if (containsPoint(border, sparc.x, sparc.y)) {    
+      sparcPathVal++;
+      console.log("point is in a border");
+    }
   }
+
   if (sparcPathVal > 1){ //multiple paths detected
     console.log("multimple paths detected");
-    sparcDirChange(currentSparcDirection);
-
-  }
-
-  //allSprites.debug = true;
-//  allSprites.draw();
-
-}
-
-function keyPressed() {
-  // Get current time
-  let currentTime = millis();
-
-  // Only allow direction change if cooldown has passed
-  if (currentTime - lastPlayerDirChange < DIRECTION_COOLDOWN) {
-    return; // Exit if still in cooldown
-  }
-
-  // Handle key presses and lock to one direction
-  if (keyCode === 40 && currentPlayerDirection != 'down') { // DOWN ARROW
-    setPlayerDirection('down');
-  } else if (keyCode === 38 && currentPlayerDirection != 'up') { // UP ARROW
-    setPlayerDirection('up');
-  } else if (keyCode === 39 && currentPlayerDirection != 'right') { // RIGHT ARROW
-    setPlayerDirection('right');
-  } else if (keyCode === 37 && currentPlayerDirection != 'left') { // LEFT ARROW
-    setPlayerDirection('left');
+    sparcDirChange(sparc);
   }
 }
+//checks if point os contained in object, doesnt have to be a border
+function containsPoint(border, x, y){
+  let topBound = border.y - border.h/2;
+  let leftBound = border.x - border.w/2;
+  let rightBound = border.x + border.w/2;
+  let bottomBound = border.y + border.h/2;
 
-function keyReleased() {
-  // Stop movement only if the released key matches the current direction
-  if (keyCode === 40 && currentPlayerDirection === 'down') { // DOWN ARROW
-    stopMovement();
-  } else if (keyCode === 38 && currentPlayerDirection === 'up') { // UP ARROW
-    stopMovement();
-  } else if (keyCode === 39 && currentPlayerDirection === 'right') { // RIGHT ARROW
-    stopMovement();
-  } else if (keyCode === 37 && currentPlayerDirection === 'left') { // LEFT ARROW
-    stopMovement();
+  if ( x < rightBound &&  x > leftBound && y < bottomBound && y > topBound){ 
+    return true;
+  }
+  else {
+    return false;
   }
 }
-
-function sparcDirChange(direction){
+//finds next direction and changes sparc path
+function sparcDirChange(sparc){
   console.log("sparcDirChange function active");
-  if (direction === 'horizontal'){
+  let test = new Sprite();
+      test.visible = false;
+      test.x = sparc.x;
+      test.y = sparc.y;
+      test.overlaps(allSprites);
+
+  if (sparc.direction === 'horizontal'){
     sparc.velocity.x = 0; //stop moving
+      // the idea is to make a temporary tester sprite, see if up
+      //  is the correct direction by moving it slightly up, if it overlaps, set 
+      // the velocity of sparc accordingly
     
-        // the idea is to make a temporary tester sprite, see if up
-        //  is the correct direction by moving it slightly up, if it overlaps, set 
-        // the velocity of sparc accordingly
-    let testUp = new Sprite();
-      testUp.visible = false;
-      testUp.x = sparc.x;
-      testUp.y = sparc.y - 2; //started moving up
-      testUp.w = 1;
-      testUp.h = 1;
-    //setting velocity accordingly
+    test.y = sparc.y - 2; //move up
+  
     let sparcDirSetter = 1;
-    if (testUp.overlaps(Borders)){
+    for (const border of Borders) { // check if on path
+      if (containsPoint(border, test.x, test.y)){
       sparcDirSetter = -1;
+      }
     }
     sparc.velocity.y = sparcDirSetter*sparcSpeed ;
-    currentSparcDirection = 'vertical';
+    sparc.direction = 'vertical';
   }
-
   else {
-    sparc.y-= sparc.velocity.y;// reset to last frame 
-    sparc.velocity.y = 0; //and stop moving
-   
-    //some test to deterimine if 
-    // need to go left or right
+    sparx.velocity.y = 0; //stop moving
+    test.x = sparc.x - 2; // move left
+    let sparcDirSetter = 1;
 
-
-    //setting velocity accordingly
-
-
-    currentSparcDirection = 'horizontal'; 
+    for (const border of Borders) {
+      if (containsPoint(border, test.x, test.y)){
+        sparcDirSetter = -1;
+      }
+    }
+    sparc.velocity.x = sparcDirSetter*sparcSpeed ;
+    sparc.direction = 'horizontal'; 
   }
-
-  console.log('sparcdir change: ', currentSparcDirection);
+  console.log('sparcdir change: ', sparc.direction);
 }
 
+
+//---PLAYER MOVEMENT---
 // Helper function to set direction and update speeds
 function setPlayerDirection(direction) {
   PspeedX = 0; // Reset both speeds first
@@ -254,11 +244,43 @@ function setPlayerDirection(direction) {
   currentPlayerDirection = direction;
   lastPlayerDirChange = millis(); // Update timestamp
 }
-
 // Helper function to stop movement
 function stopMovement() {
   PspeedX = 0;
   PspeedY = 0;
   currentPlayerDirection = null; // Clear direction
+}
+
+function keyPressed() {
+  // Get current time
+  let currentTime = millis();
+
+  // Only allow direction change if cooldown has passed
+  if (currentTime - lastPlayerDirChange < DIRECTION_COOLDOWN) {
+    return; // Exit if still in cooldown
+  }
+
+  // Handle key presses and lock to one direction
+  if (keyCode === 40 && currentPlayerDirection != 'down') { // DOWN ARROW
+    setPlayerDirection('down');
+  } else if (keyCode === 38 && currentPlayerDirection != 'up') { // UP ARROW
+    setPlayerDirection('up');
+  } else if (keyCode === 39 && currentPlayerDirection != 'right') { // RIGHT ARROW
+    setPlayerDirection('right');
+  } else if (keyCode === 37 && currentPlayerDirection != 'left') { // LEFT ARROW
+    setPlayerDirection('left');
+  }
+}
+function keyReleased() {
+  // Stop movement only if the released key matches the current direction
+  if (keyCode === 40 && currentPlayerDirection === 'down') { // DOWN ARROW
+    stopMovement();
+  } else if (keyCode === 38 && currentPlayerDirection === 'up') { // UP ARROW
+    stopMovement();
+  } else if (keyCode === 39 && currentPlayerDirection === 'right') { // RIGHT ARROW
+    stopMovement();
+  } else if (keyCode === 37 && currentPlayerDirection === 'left') { // LEFT ARROW
+    stopMovement();
+  }
 }
 

@@ -15,6 +15,7 @@ const DIRECTION_COOLDOWN = 200; // Cooldown in milliseconds (adjustable)
 let qix;
 
 let sparx;
+let currentSparcDirection = 'horizontal'; 
 let sparcSpeed = 2;
 
 let color;
@@ -93,10 +94,8 @@ function setup() {
     sparx.collider = "k";
     sparx.velocity.x = sparcSpeed;
     sparx.velocity.y = 0;
-    sparx.direction = 'horizontal'; 
-  
-    let sparc = new sparx.Sprite();
-    
+
+	let ogSparc = new sparx.Sprite();
 
   //---Layering---
   player.overlaps(gameField);
@@ -141,84 +140,89 @@ function draw() {
   qix.vel.y =  random(-2, 1); 
   }
 
-  //---SPARC MOVEMENT---
-  for (const sparc of sparx) { //doesnt work :/
+  //---SPARC MOVEMENT RULES---
+  //if sparc overlaps multiple borders, its time to change route;
+  for (let sparc of sparx) { //doesnt work :/
     updateSparc(sparc);
   }  
 
 }
 
-//---SPARX MOVEMENTS---
+//---SPARX MOVEMENT---
 function  updateSparc(sparc){
-  let sparcPathVal = 0;
-  for (let border of Borders){                       
-    if (containsPoint(border, sparc.x, sparc.y)) {    
-      sparcPathVal++;
-      console.log("point is in a border");
-    }
-  }
-
-  if (sparcPathVal > 1){ //multiple paths detected
-    console.log("multimple paths detected");
-    sparcDirChange(sparc);
-  }
+	let sparcPathVal = 0;
+	for (let border of Borders){                       
+	  if (containsPoint(border, sparc.x, sparc.y)) {    
+		sparcPathVal++;
+		console.log("point is in a border");
+	  }
+	}
+	if (sparcPathVal < 1) {
+		sparc.velocity.x *= -1 ;
+		sparc.velocity.y *= -1;
+	}
+	else if (sparcPathVal > 1){ //multiple paths detected
+	  console.log("multimple paths detected");
+	  sparcDirChange(sparc);
+	}
 }
 //checks if point os contained in object, doesnt have to be a border
 function containsPoint(border, x, y){
-  let topBound = border.y - border.h/2;
-  let leftBound = border.x - border.w/2;
-  let rightBound = border.x + border.w/2;
-  let bottomBound = border.y + border.h/2;
-
-  if ( x < rightBound &&  x > leftBound && y < bottomBound && y > topBound){ 
-    return true;
-  }
-  else {
-    return false;
-  }
+	let topBound = border.y - border.h/2;
+	let leftBound = border.x - border.w/2;
+	let rightBound = border.x + border.w/2;
+	let bottomBound = border.y + border.h/2;
+  
+	if ( x < rightBound &&  x > leftBound && y < bottomBound && y > topBound){ 
+	  return true;
+	}
+	else {
+	  return false;
+	}
 }
 //finds next direction and changes sparc path
 function sparcDirChange(sparc){
-  console.log("sparcDirChange function active");
-  let test = new Sprite();
-      test.visible = false;
-      test.x = sparc.x;
-      test.y = sparc.y;
-      test.overlaps(allSprites);
-
-  if (sparc.direction === 'horizontal'){
-    sparc.velocity.x = 0; //stop moving
-      // the idea is to make a temporary tester sprite, see if up
-      //  is the correct direction by moving it slightly up, if it overlaps, set 
-      // the velocity of sparc accordingly
-    
-    test.y = sparc.y - 2; //move up
+	console.log("sparcDirChange function active");
+	let test = new Sprite();
+		test.visible = false;
+		test.x = sparc.x;
+		test.y = sparc.y;
+		test.velocity.x = 0;
+		test.velocity.y = 0;
+		test.overlaps(allSprites);
   
-    let sparcDirSetter = 1;
-    for (const border of Borders) { // check if on path
-      if (containsPoint(border, test.x, test.y)){
-      sparcDirSetter = -1;
-      }
-    }
-    sparc.velocity.y = sparcDirSetter*sparcSpeed ;
-    sparc.direction = 'vertical';
-  }
-  else {
-    sparx.velocity.y = 0; //stop moving
-    test.x = sparc.x - 2; // move left
-    let sparcDirSetter = 1;
-
-    for (const border of Borders) {
-      if (containsPoint(border, test.x, test.y)){
-        sparcDirSetter = -1;
-      }
-    }
-    sparc.velocity.x = sparcDirSetter*sparcSpeed ;
-    sparc.direction = 'horizontal'; 
-  }
-  console.log('sparcdir change: ', sparc.direction);
+	if (sparc.direction === 'horizontal'){
+	  sparc.velocity.x = 0; //stop moving
+		// the idea is to make a temporary tester sprite, see if up
+		//  is the correct direction by moving it slightly up, if it overlaps, set 
+		// the velocity of sparc accordingly
+	  
+	  test.y = sparc.y - 2; //move up
+	
+	  let sparcDirSetter = 1;
+	  for (const border of Borders) { // check if on path
+		if (containsPoint(border, test.x, test.y)){
+		sparcDirSetter = -1;
+		}
+	  }
+	  sparc.velocity.y = sparcDirSetter*sparcSpeed ;
+	  sparc.direction = 'vertical';
+	}
+	else {
+	  sparx.velocity.y = 0; //stop moving
+	  test.x = sparc.x - 2; // move left
+	  let sparcDirSetter = 1;
+  
+	  for (const border of Borders) {
+		if (containsPoint(border, test.x, test.y)){
+		  sparcDirSetter = -1;
+		}
+	  }
+	  sparc.velocity.x = sparcDirSetter*sparcSpeed ;
+	  sparc.direction = 'horizontal'; 
+	}
+	console.log('sparcdir change: ', sparc.direction);
 }
-
 
 //---PLAYER MOVEMENT---
 // Helper function to set direction and update speeds
@@ -283,4 +287,3 @@ function keyReleased() {
     stopMovement();
   }
 }
-

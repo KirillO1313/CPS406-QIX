@@ -92,7 +92,7 @@ function setup() {
     sparc.h = 15;
     sparc.color = "#706993"
     sparc.collider = "k";
-    sparc.velocity.x = 2;
+    sparc.velocity.x = 0;
     sparc.velocity.y = 0;
     
 
@@ -142,14 +142,18 @@ function draw() {
   //---SPARC MOVEMENT RULES---
   //if sparc overlaps multiple borders, its time to change route;
   let sparcPathVal = 0;
-  for (let border of Borders){ 
-    if (sparc.overlaps(border)){
-      sparcPathVal++;
-    }
+  
+  for (let border of Borders){                     //does NOt
+    if (sparc.overlaps(border)) sparcPathVal++;     //work :/
   }
   if (sparcPathVal > 1){ //multiple paths detected
-    sparcDirChange(currentSparcDirection)
+    console.log("multimple paths detected");
+    sparcDirChange(currentSparcDirection);
+
   }
+
+  //allSprites.debug = true;
+//  allSprites.draw();
 
 }
 
@@ -188,6 +192,7 @@ function keyReleased() {
 }
 
 function sparcDirChange(direction){
+  console.log("sparcDirChange function active");
   if (direction === 'horizontal'){
     sparc.velocity.x = 0; //stop moving
     
@@ -198,8 +203,8 @@ function sparcDirChange(direction){
       testUp.visible = false;
       testUp.x = sparc.x;
       testUp.y = sparc.y - 2; //started moving up
-      testUp.w = 0.1;
-      testUp.h = 0.1;
+      testUp.w = 1;
+      testUp.h = 1;
     //setting velocity accordingly
     let sparcDirSetter = 1;
     if (testUp.overlaps(Borders)){

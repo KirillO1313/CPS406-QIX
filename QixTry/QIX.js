@@ -94,8 +94,10 @@ function setup() {
     sparx.collider = "k";
     sparx.velocity.x = sparcSpeed;
     sparx.velocity.y = 0;
+    
 
 	let ogSparc = new sparx.Sprite();
+
 
   //---Layering---
   player.overlaps(gameField);
@@ -158,12 +160,12 @@ function  updateSparc(sparc){
 	  }
 	}
 	if (sparcPathVal < 1) {
-		sparc.velocity.x *= -1 ;
-		sparc.velocity.y *= -1;
+		sparcDirChange(sparc);
 	}
 	else if (sparcPathVal > 1){ //multiple paths detected
 	  console.log("multimple paths detected");
-	  sparcDirChange(sparc);
+    sparc.velocity.x *= 0 ;
+		sparc.velocity.y *= 0;
 	}
 }
 //checks if point os contained in object, doesnt have to be a border
@@ -183,7 +185,11 @@ function containsPoint(border, x, y){
 //finds next direction and changes sparc path
 function sparcDirChange(sparc){
 	console.log("sparcDirChange function active");
-	let test = new Sprite();
+	// the idea is to make a temporary tester sprite, see if up
+	//  is the correct direction by moving it slightly up, if it overlaps, set 
+	// the velocity of sparc accordingly
+
+  let test = new Sprite();
 		test.visible = false;
 		test.x = sparc.x;
 		test.y = sparc.y;
@@ -191,12 +197,8 @@ function sparcDirChange(sparc){
 		test.velocity.y = 0;
 		test.overlaps(allSprites);
   
-	if (sparc.direction === 'horizontal'){
+	if (sparc.velocity.x > 0 || sparc.velocity.x < 0){ // this code favors taking upward turns
 	  sparc.velocity.x = 0; //stop moving
-		// the idea is to make a temporary tester sprite, see if up
-		//  is the correct direction by moving it slightly up, if it overlaps, set 
-		// the velocity of sparc accordingly
-	  
 	  test.y = sparc.y - 2; //move up
 	
 	  let sparcDirSetter = 1;
@@ -206,9 +208,8 @@ function sparcDirChange(sparc){
 		}
 	  }
 	  sparc.velocity.y = sparcDirSetter*sparcSpeed ;
-	  sparc.direction = 'vertical';
 	}
-	else {
+	else {  ///this code favors taking left turns
 	  sparx.velocity.y = 0; //stop moving
 	  test.x = sparc.x - 2; // move left
 	  let sparcDirSetter = 1;
@@ -219,9 +220,9 @@ function sparcDirChange(sparc){
 		}
 	  }
 	  sparc.velocity.x = sparcDirSetter*sparcSpeed ;
-	  sparc.direction = 'horizontal'; 
+	 
 	}
-	console.log('sparcdir change: ', sparc.direction);
+	console.log('sparcdir changed: ', sparc.velocity.x, sparc.velocity.y);
 }
 
 //---PLAYER MOVEMENT---

@@ -189,40 +189,29 @@ function sparcDirChange(sparc){
 	//  is the correct direction by moving it slightly up, if it overlaps, set 
 	// the velocity of sparc accordingly
 
-  let test = new Sprite();
-		test.visible = false;
-		test.x = sparc.x;
-		test.y = sparc.y;
-		test.velocity.x = 0;
-		test.velocity.y = 0;
-		test.overlaps(allSprites);
-  
-	if (sparc.velocity.x > 0 || sparc.velocity.x < 0){ // this code favors taking upward turns
 	  sparc.velocity.x = 0; //stop moving
-	  test.y = sparc.y - 2; //move up
-	
-	  let sparcDirSetter = 1;
-	  for (const border of Borders) { // check if on path
-		if (containsPoint(border, test.x, test.y)){
-		sparcDirSetter = -1;
-		}
-	  }
-	  sparc.velocity.y = sparcDirSetter*sparcSpeed ;
-	}
-	else {  ///this code favors taking left turns
 	  sparx.velocity.y = 0; //stop moving
-	  test.x = sparc.x - 2; // move left
 	  let sparcDirSetter = 1;
-  
-	  for (const border of Borders) {
-		if (containsPoint(border, test.x, test.y)){
-		  sparcDirSetter = -1;
-		}
-	  }
-	  sparc.velocity.x = sparcDirSetter*sparcSpeed ;
-	 
-	}
-	console.log('sparcdir changed: ', sparc.velocity.x, sparc.velocity.y);
+	  
+    for (const border of Borders) { // check if on a path
+      if (containsPoint(border, sparc.x,  sparc.y - 2)){
+      sparcDirSetter = -1;
+      sparc.velocity.y = sparcDirSetter*sparcSpeed ;
+      }
+      else if (containsPoint(border,  sparc.x, sparc.y + 2)){// path found in downward direction
+        sparc.velocity.y = sparcDirSetter*sparcSpeed ;
+      } 
+      else if (containsPoint(border,  sparc.x - 2, sparc.y)) { // path found in left direction
+        sparcDirSetter = -1; 
+        sparc.velocity.x = sparcDirSetter*sparcSpeed ;
+      }
+      else if (containsPoint(border,  sparc.x + 2, sparc.y)) {// path found in right direction
+        sparc.velocity.x = sparcDirSetter*sparcSpeed ;
+      }
+      else { //path not found
+          console.log("no directions found");
+      }
+    }
 }
 
 //---PLAYER MOVEMENT---

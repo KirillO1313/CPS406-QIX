@@ -6,12 +6,18 @@ let Borders;
 // [3] BOTTOM;
 
 let level = 1;
-let lives = 3;
+let hearts;
+let heartImg;
 let gameState = intro;
 let cover;
 let font;
+let color;
+let pallete = ["#D88C9A", "#B6EFD4", "#fdffb6", "#8E7DBE", "#A0CCDA"];
 
 let player;
+  let lives = 3;
+  let score = 0;
+  let claimedArea = 0;
 let PspeedX = 0;
 let PspeedY = 0;
 let currentPlayerDirection = null; // Tracks the current movement direction
@@ -23,14 +29,13 @@ let sparx;
 let currentSparcDirection = 'horizontal'; 
 let sparcSpeed = 2;
 
-let color;
-let pallete = ["#D88C9A", "#B6EFD4", "#fdffb6", "#8E7DBE", "#A0CCDA"];
-
 
 function preload(){
   cover = loadImage("coverArt.png");
+  heartImg = loadImage("heart.png");
   font = loadFont('LLDEtechnoGlitchGX.ttf');
 }
+
 function setup() {
   new Canvas(windowWidth, windowHeight);
   displayMode(CENTER);
@@ -69,6 +74,16 @@ function setup() {
     //bottom border
     Borders[3].y = gameField.y + gameField.h/2;   
 
+
+//---hearts---
+hearts = new Group();
+    hearts.image = heartImg;
+    hearts.collider = "s";
+for (let x = 0; x < lives;  x++) {
+  let heart = new hearts.Sprite();
+  heart.x = 50*x + 50;
+  hearts.y = 50;
+}
 
 //--PLAYER AND ENEMIES---
   player = new Sprite();
@@ -162,7 +177,6 @@ function runGame(){
   //---PlayThrough Info------------
     //points, lives, etc
 
-
   //---PLAYER MEOVEMENT-------------------------------
   player.velocity.x = PspeedX; // Apply velocity based on current speed
   player.velocity.y = PspeedY;
@@ -178,10 +192,42 @@ function runGame(){
     updateSparc(sparc);
   }  
 
+  //---collision checks-----------------------------------------
+  
+
+
+
+
+  //---check player progress-------------------------------------
+  if (lives < 1) {
+    levelFailed();
+  }
+  if (claimedArea >= 75) {
+    levelPassed();
+  }
+
   //---world update------
   allSprites.autoDraw = true;
   allSprites.autoUpdate = true;
   world.autoStep = true;
+}
+
+//---LEVEL PASSED----------------------------------------------------------------
+function levelPassed(){
+ // ...
+
+ levelNext();
+}
+function levelNext(){
+  //resets scores/lives whatver
+  //spawns in the appropriate num of bonus enemies for next round 
+
+  level++;
+}
+
+//---LEVEL FAILED---------------------------------------------------------------
+function levelFailed(){
+  // ...
 }
 
 //---QIX MOVEMENT-----------------------------------------------------------

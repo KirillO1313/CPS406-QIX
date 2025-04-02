@@ -97,7 +97,10 @@ function setup() {
     
 
 	let ogSparc = new sparx.Sprite();
-
+  for (let sparc of sparx) {
+    sparc.isHandlingCorner = false;
+    sparc.cornerPoint = null;
+  }
 
   //---Layering---
   player.overlaps(gameField);
@@ -151,67 +154,256 @@ function draw() {
 }
 
 //---SPARX MOVEMENT---
-function  updateSparc(sparc){
-	let sparcPathVal = 0;
-	for (let border of Borders){                       
-	  if (containsPoint(border, sparc.x, sparc.y)) {    
-		sparcPathVal++;
-		console.log("point is in a border");
-	  }
-	}
-	if (sparcPathVal < 1) {
-		sparcDirChange(sparc);
-	}
-	else if (sparcPathVal > 1){ //multiple paths detected
-	  console.log("multimple paths detected");
-    sparc.velocity.x *= 0 ;
-		sparc.velocity.y *= 0;
-	}
-}
-//checks if point os contained in object, doesnt have to be a border
-function containsPoint(border, x, y){
-	let topBound = border.y - border.h/2;
-	let leftBound = border.x - border.w/2;
-	let rightBound = border.x + border.w/2;
-	let bottomBound = border.y + border.h/2;
+ // Refined Sparx movement system for p5play
+function updateSparc(sparc) {
+  // Get sparc's current position
+  const x = sparc.x;
+  const y = sparc.y;
   
-	if ( x < rightBound &&  x > leftBound && y < bottomBound && y > topBound){ 
-	  return true;
-	}
-	else {
-	  return false;
-	}
+  // Find the current border the sparc is on (if any)
+  let currentBorder = null;
+  for (let border of Borders) {
+    if (isOnBorder(sparc, border, 3)) {
+      currentBorder = border;
+      break;
+    }
+  }
+  
+  // If not on any border, find the nearest border and move towards it
+  if (!currentBorder) {
+    findAndMoveToNearestBorder(sparc);
+    return;
+  }
+  
+  // Check if we're near a corner/junction
+  const isAtCorner = isAtBorderCorner(sparc, 8);
+  
+  // Handle corner turns
+  if (isAtCorner && !sparc.isHandlingCorner) {
+    handleCornerTurn(sparc, currentBorder);
+  }
+  // Continue moving along the current border
+  else if (!isAtCorner) {
+    sparc.isHandlingCorner = false; // Reset corner handling flag
+    continueAlongBorder(sparc, currentBorder);
+  }
 }
-//finds next direction and changes sparc path
-function sparcDirChange(sparc){
-	console.log("sparcDirChange function active");
-	// the idea is to make a temporary tester sprite, see if up
-	//  is the correct direction by moving it slightly up, if it overlaps, set 
-	// the velocity of sparc accordingly
-
-	  sparc.velocity.x = 0; //stop moving
-	  sparx.velocity.y = 0; //stop moving
-	  let sparcDirSetter = 1;
-	  
-    for (const border of Borders) { // check if on a path
-      if (containsPoint(border, sparc.x,  sparc.y - 2)){
-      sparcDirSetter = -1;
-      sparc.velocity.y = sparcDirSetter*sparcSpeed ;
-      }
-      else if (containsPoint(border,  sparc.x, sparc.y + 2)){// path found in downward direction
-        sparc.velocity.y = sparcDirSetter*sparcSpeed ;
-      } 
-      else if (containsPoint(border,  sparc.x - 2, sparc.y)) { // path found in left direction
-        sparcDirSetter = -1; 
-        sparc.velocity.x = sparcDirSetter*sparcSpeed ;
-      }
-      else if (containsPoint(border,  sparc.x + 2, sparc.y)) {// path found in right direction
-        sparc.velocity.x = sparcDirSetter*sparcSpeed ;
-      }
-      else { //path not found
-          console.log("no directions found");
+// Check if sprite is on a specific border
+function isOnBorder(sprite, border, tolerance = 5) {
+  // For horizontal borders (wider than tall)
+  if (border.w >= border.h) {
+    return Math.abs(sprite.y - border.y) < tolerance && 
+           sprite.x >= border.x - border.w/2 - tolerance && 
+           sprite.x <= border.x + border.w/2 + tolerance;
+  } 
+  // For vertical borders (taller than wide)
+  else {
+    return Math.abs(sprite.x - border.x) < tolerance && 
+           sprite.y >= border.y - border.h/2 - tolerance && 
+           sprite.y <= border.y + border.h/2 + tolerance;
+  }
+}
+// Find the nearest border and move the sparc towards it
+function findAndMoveToNearestBorder(sparc) {
+  let nearestPoint = null;
+  let minDist = Infinity;
+  
+  for (let border of Borders) {
+    let point;
+    
+    // For horizontal borders
+    if (border.w >= border.h) {
+      const projX = constrain(sparc.x, border.x - border.w/2, border.x + border.w/2);
+      point = {x: projX, y: border.y};
+    } 
+    // For vertical borders
+    else {
+      const projY = constrain(sparc.y, border.y - border.h/2, border.y + border.h/2);
+      point = {x: border.x, y: projY};
+    }
+    
+    const d = dist(sparc.x, sparc.y, point.x, point.y);
+    if (d < minDist) {
+      minDist = d;
+      nearestPoint = point;
+    }
+  }
+  
+  // Move towards the nearest point
+  if (nearestPoint) {
+    // If very far from any border, snap directly to it
+    if (minDist > 20) {
+      sparc.x = nearestPoint.x;
+      sparc.y = nearestPoint.y;
+      // Set initial velocity along the border
+      sparc.velocity.x = sparc.velocity.y = 0;
+      sparc.velocity.x = sparcSpeed; // Default direction
+    } else {
+      // Otherwise move towards it
+      const dx = nearestPoint.x - sparc.x;
+      const dy = nearestPoint.y - sparc.y;
+      const mag = Math.sqrt(dx*dx + dy*dy);
+      
+      if (mag > 0) {
+        sparc.velocity.x = (dx/mag) * sparcSpeed;
+        sparc.velocity.y = (dy/mag) * sparcSpeed;
       }
     }
+  }
+}
+// Check if a sprite is at a corner/junction
+function isAtBorderCorner(sparc, tolerance = 8) {
+  // Get all border endpoints
+  let allEndpoints = [];
+  
+  for (let border of Borders) {
+    if (border.w >= border.h) { // Horizontal border
+      allEndpoints.push({x: border.x - border.w/2, y: border.y});
+      allEndpoints.push({x: border.x + border.w/2, y: border.y});
+    } else { // Vertical border
+      allEndpoints.push({x: border.x, y: border.y - border.h/2});
+      allEndpoints.push({x: border.x, y: border.y + border.h/2});
+    }
+  }
+  
+  // Check if we're close enough to any endpoint
+  for (let point of allEndpoints) {
+    if (dist(sparc.x, sparc.y, point.x, point.y) < tolerance) {
+      sparc.cornerPoint = point; // Store the corner point
+      return true;
+    }
+  }
+  
+  return false;
+}
+// Handle turns at corners
+function handleCornerTurn(sparc, currentBorder) {
+  sparc.isHandlingCorner = true; // Set flag to prevent multiple turns
+  
+  // Get corner point
+  const corner = sparc.cornerPoint;
+  
+  // Snap to corner precisely
+  sparc.x = corner.x;
+  sparc.y = corner.y;
+  
+  // Find all borders connected to this corner
+  let connectedBorders = [];
+  for (let border of Borders) {
+    if (border === currentBorder) continue; // Skip current border
+    
+    // Check if this border connects to our corner
+    let endpoints = [];
+    if (border.w >= border.h) { // Horizontal
+      endpoints.push({x: border.x - border.w/2, y: border.y});
+      endpoints.push({x: border.x + border.w/2, y: border.y});
+    } else { // Vertical
+      endpoints.push({x: border.x, y: border.y - border.h/2});
+      endpoints.push({x: border.x, y: border.y + border.h/2});
+    }
+    
+    for (let ep of endpoints) {
+      if (dist(ep.x, ep.y, corner.x, corner.y) < 5) {
+        connectedBorders.push({
+          border: border,
+          isEntryPoint: true
+        });
+        break;
+      }
+    }
+  }
+  
+  // Choose a connected border that's different from current
+  if (connectedBorders.length > 0) {
+    // Determine previous direction
+    const prevDirX = Math.sign(sparc.velocity.x);
+    const prevDirY = Math.sign(sparc.velocity.y);
+    
+    // Filter out borders that would cause reversing direction
+    let validBorders = connectedBorders.filter(b => {
+      const border = b.border;
+      
+      // For current horizontal border, avoid connected borders going opposite horizontal direction
+      if (currentBorder.w >= currentBorder.h && border.w >= border.h) {
+        const newDirX = border.x > currentBorder.x ? 1 : -1;
+        return newDirX !== -prevDirX;
+      }
+      // For current vertical border, avoid connected borders going opposite vertical direction
+      else if (currentBorder.w < currentBorder.h && border.w < border.h) {
+        const newDirY = border.y > currentBorder.y ? 1 : -1;
+        return newDirY !== -prevDirY;
+      }
+      
+      return true; // Allow perpendicular turns
+    });
+    
+    // If no valid borders (would cause reversal), allow any connected border
+    if (validBorders.length === 0) validBorders = connectedBorders;
+    
+    // Choose a random valid border
+    const chosenBorder = random(validBorders).border;
+    
+    // Set velocity based on new border orientation
+    if (chosenBorder.w >= chosenBorder.h) { // Horizontal border
+      sparc.velocity.y = 0;
+      // Determine if we should go left or right
+      if (Math.abs(corner.x - (chosenBorder.x - chosenBorder.w/2)) < 5) {
+        sparc.velocity.x = sparcSpeed; // Go right
+      } else {
+        sparc.velocity.x = -sparcSpeed; // Go left
+      }
+    } else { // Vertical border
+      sparc.velocity.x = 0;
+      // Determine if we should go up or down
+      if (Math.abs(corner.y - (chosenBorder.y - chosenBorder.h/2)) < 5) {
+        sparc.velocity.y = sparcSpeed; // Go down
+      } else {
+        sparc.velocity.y = -sparcSpeed; // Go up
+      }
+    }
+    
+    // Reset the corner handling flag after a delay
+    setTimeout(() => {
+      sparc.isHandlingCorner = false;
+    }, 300);
+  }
+}
+// Continue movement along the current border
+function continueAlongBorder(sparc, border) {
+  // For horizontal borders
+  if (border.w >= border.h) {
+    // Snap to the border's y position to prevent drift
+    sparc.y = border.y;
+    sparc.velocity.y = 0;
+    
+    // If not moving horizontally, set a direction
+    if (Math.abs(sparc.velocity.x) < 0.1) {
+      sparc.velocity.x = sparcSpeed;
+    }
+    
+    // Check if we're about to go off the border
+    if ((sparc.velocity.x > 0 && sparc.x > border.x + border.w/2 - 5) ||
+        (sparc.velocity.x < 0 && sparc.x < border.x - border.w/2 + 5)) {
+      sparc.velocity.x *= -1; // Reverse direction
+    }
+  } 
+  // For vertical borders
+  else {
+    // Snap to the border's x position to prevent drift
+    sparc.x = border.x;
+    sparc.velocity.x = 0;
+    
+    // If not moving vertically, set a direction
+    if (Math.abs(sparc.velocity.y) < 0.1) {
+      sparc.velocity.y = sparcSpeed;
+    }
+    
+    // Check if we're about to go off the border
+    if ((sparc.velocity.y > 0 && sparc.y > border.y + border.h/2 - 5) ||
+        (sparc.velocity.y < 0 && sparc.y < border.y - border.h/2 + 5)) {
+      sparc.velocity.y *= -1; // Reverse direction
+    }
+  }
 }
 
 //---PLAYER MOVEMENT---

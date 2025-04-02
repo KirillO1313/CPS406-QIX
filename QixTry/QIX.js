@@ -5,6 +5,12 @@ let Borders;
 // [2] TOP;
 // [3] BOTTOM;
 
+let level = 1;
+let lives = 3;
+let gameState = intro;
+let cover;
+let font;
+
 let player;
 let PspeedX = 0;
 let PspeedY = 0;
@@ -12,8 +18,7 @@ let currentPlayerDirection = null; // Tracks the current movement direction
 let lastPlayerDirChange = 0; // Timestamp of the last direction change
 const DIRECTION_COOLDOWN = 200; // Cooldown in milliseconds (adjustable)
 
-let qix;
-
+let qixi;
 let sparx;
 let currentSparcDirection = 'horizontal'; 
 let sparcSpeed = 2;
@@ -22,7 +27,10 @@ let color;
 let pallete = ["#D88C9A", "#B6EFD4", "#fdffb6", "#8E7DBE", "#A0CCDA"];
 
 
-
+function preload(){
+  cover = loadImage("coverArt.png");
+  font = loadFont('LLDEtechnoGlitchGX.ttf');
+}
 function setup() {
   new Canvas(windowWidth, windowHeight);
   displayMode(CENTER);
@@ -72,18 +80,18 @@ function setup() {
     player.color = "#8CB369";
     player.collider = 'k';
 
-  qix = new Sprite();
-    qix.x = gameField.x;
-    qix.y = gameField.y - gameField.h / 2 + 50;
-    qix.w = 25;
-    qix.h = 25;
-    qix.rotation = 45;
-    qix.rotationLock = true;
-    qix.color = "#a71d31"
-    qix.collider = "d";
-    qix.bounciness = 1;
-    qix.velocity.x = random(-2, 2);
-    qix.velocity.y = random(-2, 2);
+  qixi = new Group();
+    qixi.x = gameField.x;
+    qixi.y = gameField.y - gameField.h / 2 + 50;
+    qixi.w = 25;
+    qixi.h = 25;
+    qixi.rotation = 45;
+    qixi.rotationLock = true;
+    qixi.color = "#a71d31"
+    qixi.collider = "d";
+    qixi.bounciness = 1;
+    qixi.velocity.x = random(-2, 2);
+    qixi.velocity.y = random(-2, 2);
 
   sparx = new Group();
     sparx.x = gameField.x;
@@ -94,44 +102,90 @@ function setup() {
     sparx.collider = "k";
     sparx.velocity.x = sparcSpeed;
     sparx.velocity.y = 0;
-    
+    for (let sparc of sparx) {
+      sparc.isHandlingCorner = false;
+      sparc.cornerPoint = null;
+    }
 
+  let ogQix = new qixi.Sprite();
 	let ogSparc = new sparx.Sprite();
-  for (let sparc of sparx) {
-    sparc.isHandlingCorner = false;
-    sparc.cornerPoint = null;
-  }
+  
 
-  //---Layering---
+  //---Layering-------------------------
   player.overlaps(gameField);
-  qix.overlaps(gameField);
+  qixi.overlaps(gameField);
 
   sparx.overlaps(gameField);
   sparx.overlaps(Borders);
 
   Borders.overlaps(gameField);
   Borders.overlaps(Borders);  
+
+  //---auto's off -----
+  allSprites.autoDraw = false;
+  allSprites.autoUpdate = false;
+  world.autoStep = false;
+}
+function draw() {
+  gameState();
 }
 
-function draw() {
-  background('#e3d5ca');
+//---INTRO-----------------------------------------------------------------------
+function intro(){
+  push();
+    imageMode(CENTER);
+    translate(windowWidth/2, windowHeight/2 -25);
+    scale(1.5);
+    image(cover, 0, 0);
 
-  // Apply velocity based on current speed
-  player.velocity.x = PspeedX;
+    textFont(font);
+    fill("white");
+    textSize(30);
+    text("Click to Play", 0, 190);
+
+  pop();
+
+  if (mouse.presses()) gameState = runGame;
+}
+
+//---GAME-------------------------------------------------------------------------
+function runGame(){
+  background('#e3d5ca');
+  //---Display directions/info---
+  push();
+    textSize(20);
+    text('↑', width * 0.9, height - (height * 0.3));
+    text('← move →', width * 0.9, height - (height * 0.2));
+    text('↓', width * 0.9, height - (height * 0.1));
+  pop();
+
+  //---PlayThrough Info------------
+    //points, lives, etc
+
+
+  //---PLAYER MEOVEMENT-------------------------------
+  player.velocity.x = PspeedX; // Apply velocity based on current speed
   player.velocity.y = PspeedY;
   // Constrain player within game field
   player.x = constrain(player.x, windowWidth / 2 - gameField.w / 2, windowWidth / 2 + gameField.w / 2);
   player.y = constrain(player.y, windowHeight / 2 - gameField.h / 2, windowHeight / 2 + gameField.h / 2);
 
-  //---Display directions/info---
-  push();
-  textSize(20);
-  text('↑', width * 0.9, height - (height * 0.3));
-  text('← move →', width * 0.9, height - (height * 0.2));
-  text('↓', width * 0.9, height - (height * 0.1));
-  pop();
+  //---ENEMY MOVEMENT----
+  for (let qix of qixi) { 
+    updateQix(qix);
+  }
+  for (let sparc of sparx) {  
+    updateSparc(sparc);
+  }  
 
-  //--Keep Qix Bouncing Continuosly---
+  //---world update------
+  allSprites.autoDraw = true;
+  allSprites.autoUpdate = true;
+  world.autoStep = true;
+}
+
+//---QIX MOVEMENT-----------------------------------------------------------
+function updateQix(qix){
   if ( qix.vel.x < 1 &&  qix.vel.x > 0 || qix.vel.x == 0 ){ //makes sure 
     qix.vel.x = random(1, 2);   // not stuck in vertical bounce loop
   }
@@ -144,16 +198,9 @@ function draw() {
   else if (qix.vel.y > -1 &&  qix.vel.y < 0){
   qix.vel.y =  random(-2, 1); 
   }
-
-  //---SPARC MOVEMENT RULES---
-  //if sparc overlaps multiple borders, its time to change route;
-  for (let sparc of sparx) { //doesnt work :/
-    updateSparc(sparc);
-  }  
-
 }
 
-//---SPARX MOVEMENT---
+//---SPARX MOVEMENT--------------------------------------------------------
  // Refined Sparx movement system for p5play
 function updateSparc(sparc) {
   // Get sparc's current position
@@ -406,7 +453,7 @@ function continueAlongBorder(sparc, border) {
   }
 }
 
-//---PLAYER MOVEMENT---
+//---PLAYER MOVEMENT------------------------------------------------------
 // Helper function to set direction and update speeds
 function setPlayerDirection(direction) {
   PspeedX = 0; // Reset both speeds first
@@ -436,7 +483,6 @@ function stopMovement() {
   PspeedY = 0;
   currentPlayerDirection = null; // Clear direction
 }
-
 function keyPressed() {
   // Get current time
   let currentTime = millis();

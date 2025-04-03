@@ -215,29 +215,27 @@ function runGame(){
 //---PLAYER HIT------------------------------------------
 function playerHit(){
   // all movment stops
-  // number of lives decreases
-  // number of hearts displayed should also decrease 
+  allSprites.autoUpdate = false;
+  world.autoStep = false;
+   
   // player circle blinks three times,
-  // and is then teleported to initial position.
-  // player circle blinks three times, then movement resumes
-}
 
-//---LEVEL PASSED----------------------------------------------------------------
-function levelPassed(){
- // all movement stops,
- // player circle and claimed area blinks three times, idk change color or smthtn
- //final score calculated, displayed
- // button for next level
- ///when clicked ;
- levelNext();
-}
-function levelNext(){
-  //resets score/lives/claimedArea/whatver
-  //spawns in the appropriate num of bonus enemies for next round 
-  //reset player location
+  // number of lives/hearts decreases
+  lives--;
+  hearts[hearts.length - 1].remove();
+ 
+  //check for level failed
+  if (hearts.length === 0) levelFailed();
 
-  level++;
+  // player teleported to initial position.
+   
+
+
+  // player circle blinks three times,
+  // movement resumes
 }
+ 
+
 
 //---LEVEL FAILED---------------------------------------------------------------
 function levelFailed(){

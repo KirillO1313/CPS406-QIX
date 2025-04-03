@@ -194,7 +194,7 @@ function runGame(){
 
   //---collision checks-----------------------------------------
   player.collides(sparx, playerHit);
-  player.collides(qixi, playerHit);
+  player.collides(qixi, checkPlayerCollision);
 
 
   //---check player progress-------------------------------------
@@ -209,6 +209,22 @@ function runGame(){
 }
 
 //---PLAYER HIT------------------------------------------
+function checkPlayerCollision() {
+  let onBorder = false;  
+  for (let border of Borders) {
+    if (isOnBorder(player, border, tolerance = 5)){
+      onBorder = true;
+      break;
+    }
+  }
+
+  if (!onBorder) {
+    // Player is not on a border, trigger player hit
+    playerHit();
+  }
+}
+
+
 function playerHit(){
   // all movment stops
   allSprites.autoUpdate = false;

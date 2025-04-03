@@ -35,7 +35,6 @@ function preload(){
   heartImg = loadImage("heart.png");
   font = loadFont('LLDEtechnoGlitchGX.ttf');
 }
-
 function setup() {
   new Canvas(windowWidth, windowHeight);
   displayMode(CENTER);
@@ -199,11 +198,8 @@ function runGame(){
 
 
   //---check player progress-------------------------------------
-  if (lives < 1) {
-    levelFailed();
-  }
   if (claimedArea >= 75) {
-    levelPassed();
+    levelOver();
   }
 
   //---world update------
@@ -235,23 +231,15 @@ function playerHit(){
   // movement resumes
 }
  
-//---LEVEL PASSED---------------------------------------------------------------
-function levelPassed(){
+//---LEVEL OVER---------------------------------------------------------------
+function levelOver(){
   // all movement stops,
   // player circle blinks three times
-  // "you win" or smthn
+  // "you win" or "you loose" or smthn
+  // player score/area claimed display
   // option to restart game or back to intro screen
   // change game state accordingly
 }
-
-//---LEVEL FAILED---------------------------------------------------------------
-function levelFailed(){
-  // all movement stops,
-  // player circle blinks three times, and dissapears
-  // "you loose" or smthn
-  // option to restart game or back to intro screen
-  // change game state accordingly
- }
 
 //---QIX MOVEMENT-----------------------------------------------------------
 function updateQix(qix){

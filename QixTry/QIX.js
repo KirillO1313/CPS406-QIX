@@ -106,6 +106,7 @@ for (let x = 0; x < lives;  x++) {
     qixi.bounciness = 1;
     qixi.velocity.x = random(-2, 2);
     qixi.velocity.y = random(-2, 2);
+    qixi.maxSpeed = 2;
 
   sparx = new Group();
     sparx.x = gameField.x;
@@ -113,9 +114,11 @@ for (let x = 0; x < lives;  x++) {
     sparx.w = 15;
     sparx.h = 15;
     sparx.color = "#706993"
-    sparx.collider = "k";
+    sparx.collider = "d";
+    sparx.rotationLock = true;
     sparx.velocity.x = sparcSpeed;
     sparx.velocity.y = 0;
+    sparx.maxSpeed = sparcSpeed
     for (let sparc of sparx) {
       sparc.isHandlingCorner = false;
       sparc.cornerPoint = null;
@@ -184,7 +187,7 @@ function runGame(){
   player.x = constrain(player.x, windowWidth / 2 - gameField.w / 2, windowWidth / 2 + gameField.w / 2);
   player.y = constrain(player.y, windowHeight / 2 - gameField.h / 2, windowHeight / 2 + gameField.h / 2);
 
-  //---ENEMY MOVEMENT----
+  //---ENEMY MOVEMENT------------------------------------
   for (let qix of qixi) { 
     updateQix(qix);
   }
@@ -223,8 +226,6 @@ function checkPlayerCollision() {
     playerHit();
   }
 }
-
-
 function playerHit(){
   // all movment stops
   allSprites.autoUpdate = false;
@@ -271,6 +272,25 @@ function updateQix(qix){
   else if (qix.vel.y > -1 &&  qix.vel.y < 0){
   qix.vel.y =  random(-2, 1); 
   }
+ 
+  //limiting speed
+  if (qix.speed > 0){
+    if (qix.speed > qix.maxSpeed) {
+      qix.speed = qix.maxSpeed; // Limit speed to maxSpeed
+    }
+    else if (qix.speed < 1){    
+    qix.speed = random(1, 2); // Limit speed to 1 and maxSpeed
+  }
+  }
+  else {
+    if (qix.speed < -qix.maxSpeed) {
+      qix.speed = -qix.maxSpeed; // Limit speed to maxSpeed
+    }
+    else if (qix.speed > -1){
+      qix.speed = random(-2, -1); // Limit speed to -1 and -maxSpeed
+    }
+  }
+
 }
 
 //---SPARX MOVEMENT--------------------------------------------------------
@@ -307,6 +327,24 @@ function updateSparc(sparc) {
     sparc.isHandlingCorner = false; // Reset corner handling flag
     continueAlongBorder(sparc, currentBorder);
   }
+
+  if (sparc.speed > 0){
+    if (sparc.speed > sparc.maxSpeed) {
+      sparc.speed = sparc.maxSpeed; // Limit speed to maxSpeed
+    }
+    else if (sparc.speed < 1){    
+    sparc.speed = random(1, 2); // Limit speed to 1 and maxSpeed
+  }
+  }
+  else {
+    if (sparc.speed < -sparc.maxSpeed) {
+      sparc.speed = -sparc.maxSpeed; // Limit speed to maxSpeed
+    }
+    else if (sparc.speed > -1){
+      sparc.speed = random(-2, -1); // Limit speed to -1 and -maxSpeed
+    }
+  }
+
 }
 // Check if sprite is on a specific border
 function isOnBorder(sprite, border, tolerance = 5) {

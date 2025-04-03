@@ -235,7 +235,14 @@ function playerHit(){
   // movement resumes
 }
  
-
+//---LEVEL PASSED---------------------------------------------------------------
+function levelPassed(){
+  // all movement stops,
+  // player circle blinks three times
+  // "you win" or smthn
+  // option to restart game or back to intro screen
+  // change game state accordingly
+}
 
 //---LEVEL FAILED---------------------------------------------------------------
 function levelFailed(){

@@ -238,7 +238,7 @@ function playerHit(){
   hearts[hearts.length - 1].remove();
  
   //check for level failed
-  if (hearts.length === 0) levelFailed();
+  if (hearts.length === 0) levelOver();
 
   // player teleported to initial position.
    
@@ -294,7 +294,6 @@ function updateQix(qix){
 }
 
 //---SPARX MOVEMENT--------------------------------------------------------
- // Refined Sparx movement system for p5play
 function updateSparc(sparc) {
   // Get sparc's current position
   const x = sparc.x;
@@ -345,21 +344,6 @@ function updateSparc(sparc) {
     }
   }
 
-}
-// Check if sprite is on a specific border
-function isOnBorder(sprite, border, tolerance = 5) {
-  // For horizontal borders (wider than tall)
-  if (border.w >= border.h) {
-    return Math.abs(sprite.y - border.y) < tolerance && 
-           sprite.x >= border.x - border.w/2 - tolerance && 
-           sprite.x <= border.x + border.w/2 + tolerance;
-  } 
-  // For vertical borders (taller than wide)
-  else {
-    return Math.abs(sprite.x - border.x) < tolerance && 
-           sprite.y >= border.y - border.h/2 - tolerance && 
-           sprite.y <= border.y + border.h/2 + tolerance;
-  }
 }
 // Find the nearest border and move the sparc towards it
 function findAndMoveToNearestBorder(sparc) {
@@ -624,5 +608,22 @@ function keyReleased() {
     stopMovement();
   } else if (keyCode === 37 && currentPlayerDirection === 'left') { // LEFT ARROW
     stopMovement();
+  }
+}
+
+//---HELPERS-----------------------------------------------------
+// Check if sprite is on a specific border
+function isOnBorder(sprite, border, tolerance = 5) {
+  // For horizontal borders (wider than tall)
+  if (border.w >= border.h) {
+    return Math.abs(sprite.y - border.y) < tolerance && 
+           sprite.x >= border.x - border.w/2 - tolerance && 
+           sprite.x <= border.x + border.w/2 + tolerance;
+  } 
+  // For vertical borders (taller than wide)
+  else {
+    return Math.abs(sprite.x - border.x) < tolerance && 
+           sprite.y >= border.y - border.h/2 - tolerance && 
+           sprite.y <= border.y + border.h/2 + tolerance;
   }
 }

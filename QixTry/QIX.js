@@ -167,6 +167,7 @@ function intro(){
 function runGame(){
   background('#e3d5ca');
   //---Display directions/info---
+  //add some description of how to play maybe?
   push();
     textSize(20);
     text('↑', width * 0.9, height - (height * 0.3));
@@ -193,9 +194,8 @@ function runGame(){
   }  
 
   //---collision checks-----------------------------------------
-  
-
-
+  player.collides(sparx, playerHit);
+  player.collides(qixi, playerHit);
 
 
   //---check player progress-------------------------------------
@@ -212,23 +212,41 @@ function runGame(){
   world.autoStep = true;
 }
 
+//---PLAYER HIT------------------------------------------
+function playerHit(){
+  // all movment stops
+  // number of lives decreases
+  // number of hearts displayed should also decrease 
+  // player circle blinks three times,
+  // and is then teleported to initial position.
+  // player circle blinks three times, then movement resumes
+}
+
 //---LEVEL PASSED----------------------------------------------------------------
 function levelPassed(){
- // ...
-
+ // all movement stops,
+ // player circle and claimed area blinks three times, idk change color or smthtn
+ //final score calculated, displayed
+ // button for next level
+ ///when clicked ;
  levelNext();
 }
 function levelNext(){
-  //resets scores/lives whatver
+  //resets score/lives/claimedArea/whatver
   //spawns in the appropriate num of bonus enemies for next round 
+  //reset player location
 
   level++;
 }
 
 //---LEVEL FAILED---------------------------------------------------------------
 function levelFailed(){
-  // ...
-}
+  // all movement stops,
+  // player circle blinks three times, and dissapears
+  // "you loose" or smthn
+  // option to restart game or back to intro screen
+  // change game state accordingly
+ }
 
 //---QIX MOVEMENT-----------------------------------------------------------
 function updateQix(qix){

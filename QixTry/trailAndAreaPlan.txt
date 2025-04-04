@@ -1,0 +1,90 @@
+1. In setup():
+   - Create trails Group with appropriate properties
+   - Set trailSegmentDistance = 10 // Distance between trail segments
+   
+2. Create new player state tracking:
+   - Create isPlayerOnBorder() function that returns a boolean:
+     * Checks all borders and returns true if player is on any border
+     * Returns false otherwise
+     * Include tolerance parameter for border proximity detection
+   - trailStartPoint = null
+   - currentTrail = [] (to store current trail segments)
+   - lastTrailSegmentPos = null // Track last position where we created a segment
+   - previousBorderStatus = isPlayerOnBorder() // Initial state
+   - lastBorderTouched = null
+   
+3. Modify player update logic:
+   - In player update or movement function:
+     * Get currentBorderStatus = isPlayerOnBorder()
+     * Check for status change:
+       
+     * If previousBorderStatus === true && currentBorderStatus === false:
+       // Player just moved off a border
+       - Record trailStartPoint = player's position
+       - Record lastBorderTouched = current border
+       - Initialize lastTrailSegmentPos = player's position
+       - Begin trail creation mode
+
+     * If previousBorderStatus === false && currentBorderStatus === true:
+       // Player just returned to a border
+       - Identify which border was touched
+       - Attempt to close area with attemptAreaClosure()
+       - Convert trail to borders with convertTrailsToBorders()
+       
+     * Update previousBorderStatus = currentBorderStatus
+   
+4. In draw() or player update:
+   - If !isPlayerOnBorder():
+     * Calculate distance from lastTrailSegmentPos to current position
+     * If distance >= trailSegmentDistance:
+       - Create new trail segment
+       - Update lastTrailSegmentPos = player's position
+       - For visual continuity, draw a line between last segment and current one
+   
+5. New function: isPlayerOnBorder(tolerance = 5)
+   - For each border in Borders:
+     * Check if player is on this border using existing isOnBorder() helper
+     * If true, store this border as lastBorderTouched and return true
+   - Return false if no border match found
+   
+6. New function: createTrailSegment()
+   - Create new sprite in trails Group
+   - Position at player position
+   - Set diameter smaller than player
+   - Set visual properties (color, etc.)
+   - Add to currentTrail array
+   
+7. New function: attemptAreaClosure()
+   - Check if trail forms a valid loop (starts and ends on borders)
+   - Calculate enclosed area:
+     * Use point-in-polygon method to find grid points inside new area
+     * Calculate percentage of total field area
+   - Update claimedArea percentage
+   - Update score based on area claimed
+   
+8. New function: convertTrailsToBorders()
+   - Create new border sprites for trail segments but optimize:
+     * Analyze trail path to identify straight segments
+     * Create fewer, longer border sprites for straight sections
+     * For corners/curves, use individual border segments
+   - Connect new borders to existing border network
+   - Remove all trail segments after conversion
+   
+9. Enhanced collision detection:
+   - Add collision detection between:
+     * qixi and trails (player dies)
+     * sparx and trails (player dies)
+     * player and their own trail (check only when player changes direction)
+   
+10. New function: calculateClaimedArea()
+    - Create a grid representation of the game field
+    - Mark all points inside the new enclosed area using flood fill
+      * Start flood fill from a point inside the area (can be found by casting ray from trail midpoint)
+      * Only fill points inside game field and not already claimed
+    - Count filled grid points and calculate percentage of total
+    - For optimization, use a coarse grid for calculation
+   
+11. New function: visualizeAreaClaim()
+    - Create visual effect to show newly claimed area 
+    - Animation can be simple color transition
+    - Apply to the filled points from calculateClaimedArea()

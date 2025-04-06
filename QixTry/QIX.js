@@ -162,11 +162,26 @@ trails = new Group();
   world.autoStep = false;
 }
 function draw() {
-  gameState();
+  // This ensures only the current game state function is being called
+  if (typeof gameState === 'function') {
+    gameState();
+  } else {
+    console.error("Invalid game state:", gameState);
+    // Default to intro if gameState is invalid
+    intro();
+  }
 }
 
 //---INTRO-----------------------------------------------------------------------
 function intro(){
+  // Set a black background to clear any previous content
+  background(0);
+  
+  // Hide all game elements when in intro
+  for (let sprite of allSprites) {
+    sprite.visible = false;
+  }
+  
   push();
     imageMode(CENTER);
     translate(windowWidth/2, windowHeight/2 -25);
@@ -176,11 +191,16 @@ function intro(){
     textFont(font);
     fill("white");
     textSize(30);
-    text("Click to Play", 0, 190);
-
+    text("Click to Play", 0, 190); 
   pop();
 
-  if (mouse.presses()) gameState = runGame;
+  if (mouse.presses()) {
+    // Make all sprites visible again when starting the game
+    for (let sprite of allSprites) {
+      sprite.visible = true;
+    }
+    gameState = runGame;
+  }
 }
 
 //---GAME-------------------------------------------------------------------------
@@ -198,72 +218,75 @@ function runGame(){
   //---PlayThrough Info------------
     //points, lives, etc
 
-  //---PLAYER MEOVEMENT-------------------------------
-  player.velocity.x = PspeedX; // Apply velocity based on current speed
-  player.velocity.y = PspeedY;
-  // Constrain player within game field
-  player.x = constrain(player.x, windowWidth / 2 - gameField.w / 2, windowWidth / 2 + gameField.w / 2);
-  player.y = constrain(player.y, windowHeight / 2 - gameField.h / 2, windowHeight / 2 + gameField.h / 2);
+  // Only process game logic if we're actually in the runGame state
+  // This check prevents movement updates when we're in a different state
+  if (gameState === runGame) {
 
-  //---TRAILS-----------------------------------------
-  const currentBorderStatus = isPlayerOnBorder();
-  // Player just moved off border - start trail
-  if (previousBorderStatus === true && currentBorderStatus === false) {
-    trailStartPoint = createVector(player.x, player.y);
-    // Find which border was last touched
-    lastBorderTouched = findLastTouchedBorder();
-    lastTrailSegmentPos = createVector(player.x, player.y);
-    // Create the first trail segment
-    createTrailSegment(player.x, player.y);
-  }
-  // Player just moved back onto border - close trail
-  if (previousBorderStatus === false && currentBorderStatus === true) {
-    if (currentTrail.length > 0) {
-      // Find current touched border
-      const currentBorder = findCurrentTouchedBorder();
-      attemptAreaClosure(currentBorder);
-      convertTrailsToBorders();
-      // Reset trail tracking
-      currentTrail = [];
-    }
-  }
-  previousBorderStatus = currentBorderStatus;
-
-  // create trail segments:
-  if (!isPlayerOnBorder()) {
-    // Calculate distance from last segment
-    const distFromLast = dist(player.x, player.y, lastTrailSegmentPos.x, lastTrailSegmentPos.y);
-    if (distFromLast >= trailSegmentDistance) {
+    //---PLAYER MEOVEMENT-------------------------------
+    player.velocity.x = PspeedX; // Apply velocity based on current speed
+    player.velocity.y = PspeedY;
+    // Constrain player within game field
+    player.x = constrain(player.x, windowWidth / 2 - gameField.w / 2, windowWidth / 2 + gameField.w / 2);
+    player.y = constrain(player.y, windowHeight / 2 - gameField.h / 2, windowHeight / 2 + gameField.h / 2);
+    //---TRAILS-----------------------------------------
+    const currentBorderStatus = isPlayerOnBorder();
+    // Player just moved off border - start trail
+    if (previousBorderStatus === true && currentBorderStatus === false) {
+      trailStartPoint = createVector(player.x, player.y);
+      // Find which border was last touched
+      lastBorderTouched = findLastTouchedBorder();
+      lastTrailSegmentPos = createVector(player.x, player.y);
+      // Create the first trail segment
       createTrailSegment(player.x, player.y);
-      lastTrailSegmentPos.x = player.x;
-      lastTrailSegmentPos.y = player.y;
     }
-  }
-
-  //---ENEMY MOVEMENT------------------------------------
-  for (let qix of qixi) { 
-    updateQix(qix);
-  }
-  for (let sparc of sparx) {  
-    updateSparc(sparc);
-  }  
-
-  //---collision checks-----------------------------------------
-  player.collides(sparx, playerHit);
-  player.collides(qixi, checkPlayerCollision);
-  player.collides(trails, playerHit);
-  qixi.collides(trails, playerHit);
-  sparx.collides(trails, playerHit);
-
-  //---check player progress-------------------------------------
-  if (claimedArea >= 75) {
-    levelOver();
-  }
-
+    // Player just moved back onto border - close trail
+    if (previousBorderStatus === false && currentBorderStatus === true) {
+      if (currentTrail.length > 0) {
+        // Find current touched border
+        const currentBorder = findCurrentTouchedBorder();
+        attemptAreaClosure(currentBorder);
+        convertTrailsToBorders();
+        // Reset trail tracking
+        currentTrail = [];
+      }
+    }
+    previousBorderStatus = currentBorderStatus;
+    // create trail segments:
+    if (!isPlayerOnBorder()) {
+      // Calculate distance from last segment
+      const distFromLast = dist(player.x, player.y, lastTrailSegmentPos.x, lastTrailSegmentPos.y);
+      if (distFromLast >= trailSegmentDistance) {
+        createTrailSegment(player.x, player.y);
+        lastTrailSegmentPos.x = player.x;
+        lastTrailSegmentPos.y = player.y;
+      }
+    }
+    //---ENEMY MOVEMENT------------------------------------
+    for (let qix of qixi) { 
+      updateQix(qix);
+    }
+    for (let sparc of sparx) {  
+      updateSparc(sparc);
+    }  
+    //---collision checks-----------------------------------------
+    player.collides(sparx, playerHit);
+    player.collides(qixi, checkPlayerCollision);
+    player.collides(trails, playerHit);
+    qixi.collides(trails, playerHit);
+    sparx.collides(trails, playerHit);
+    //---check player progress-------------------------------------
+    if (claimedArea >= 75) {
+      levelOver();
+    }
+}
   //---world update------
-  allSprites.autoDraw = true;
-  allSprites.autoUpdate = true;
-  world.autoStep = true;
+  // These are kept outside the conditional to ensure sprites still render
+  // in all game states, but they don't update positions/logic if not in runGame
+  allSprites.draw();
+  if (gameState === runGame) {
+    allSprites.update();
+    world.step();
+  }
 }
 
 //---PLAYER HIT------------------------------------------
@@ -281,36 +304,346 @@ function checkPlayerCollision() {
     playerHit();
   }
 }
-function playerHit(){
-  // all movment stops
+
+function playerHit() {
+  console.log("Player hit! Lives remaining:", lives - 1);
+  
+  // Stop all movement
   allSprites.autoUpdate = false;
   world.autoStep = false;
-   
-  // player circle blinks three times,
-
-  // number of lives/hearts decreases
+  
+  // Freeze all sprite velocities
+  for (let sprite of allSprites) {
+    sprite.velocity.x = 0;
+    sprite.velocity.y = 0;
+    sprite.speed = 0;
+  }
+  
+  // Reset player control variables
+  PspeedX = 0;
+  PspeedY = 0;
+  currentPlayerDirection = null;
+  
+  // Decrease lives
   lives--;
-  hearts[hearts.length - 1].remove();
- 
-  //check for level failed
-  if (hearts.length === 0) levelOver();
-
-  // player teleported to initial position.
-   
-
-
-  // player circle blinks three times,
-  // movement resumes
+  
+  // Remove the last heart
+  if (hearts.length > 0) {
+    hearts[hearts.length - 1].remove();
+  }
+  
+  // Check for game over
+  if (lives <= 0 || hearts.length === 0) {
+    console.log("Game over - calling levelOver()");
+    levelOver();
+    return; // Important: exit the function early if game over
+  }
+  
+  // Reset trail-related variables
+  trailStartPoint = null;
+  lastTrailSegmentPos = null;
+  previousBorderStatus = true;
+  lastBorderTouched = null;
+  
+  // Clear current trail
+  for (let segment of currentTrail) {
+    if (segment) {
+      segment.remove();
+    }
+  }
+  currentTrail = [];
+  
+  // Store original player position to return to later
+  const originalX = windowWidth / 2;
+  const originalY = gameField.y + gameField.h / 2;
+  
+  // Create a blinking effect for the player
+  let blinkCount = 0;
+  let blinkInterval = setInterval(() => {
+    player.visible = !player.visible;
+    blinkCount++;
+    
+    if (blinkCount >= 6) { // 3 blinks (on-off cycles)
+      clearInterval(blinkInterval);
+      player.visible = true;
+      
+      // Reset player position
+      player.x = originalX;
+      player.y = originalY;
+      
+      // Resume game physics and updates
+      allSprites.autoUpdate = true;
+      world.autoStep = true;
+      
+      console.log("Player hit recovery complete, resuming game");
+    }
+  }, 300); // 300ms per state change
 }
  
 //---LEVEL OVER---------------------------------------------------------------
-function levelOver(){
-  // all movement stops,
-  // player circle blinks three times
-  // "you win" or "you loose" or smthn
-  // player score/area claimed display
-  // option to restart game or back to intro screen
-  // change game state accordingly
+
+function levelOver() {
+  console.log("Level over function called");
+  
+  // Force game state to ensure we're in a known state
+  gameState = runGame;
+  
+  // Stop all movement - multiple layers of stopping
+  allSprites.autoUpdate = false;
+  world.autoStep = false;
+  
+  // Manually set all sprite velocities to zero
+  for (let sprite of allSprites) {
+    sprite.velocity.x = 0;
+    sprite.velocity.y = 0;
+    sprite.speed = 0;
+  }
+  
+  // Reset player control variables
+  PspeedX = 0;
+  PspeedY = 0;
+  currentPlayerDirection = null;
+  
+  // Store current state
+  let levelWon = claimedArea >= 75;
+  let finalScore = score;
+  let finalArea = claimedArea;
+  
+  console.log("Level won:", levelWon);
+  console.log("Final score:", finalScore);
+  console.log("Final area:", finalArea);
+  
+  // Make sure gameOverScreen function exists before we try to use it
+  if (typeof gameOverScreen !== 'function') {
+    console.log("Creating gameOverScreen function");
+    
+    window.gameOverScreen = function() {
+      console.log("Running gameOverScreen");
+      
+      background('#e3d5ca');
+      gameField.visible = true;
+      
+      // Draw everything but ensure nothing moves
+      for (let sprite of allSprites) {
+        // Double check that velocities are still zero
+        sprite.velocity.x = 0;
+        sprite.velocity.y = 0;
+        sprite.speed = 0;
+        sprite.draw();
+      }
+      
+      // Overlay with semi-transparent background
+      push();
+      fill(0, 0, 0, 180);
+      rect(0, 0, width, height);
+      
+      // Game over message
+      textFont(font);
+      textSize(40);
+      if (levelWon) {
+        fill("#B6EFD4"); // Green from palette
+        text("LEVEL COMPLETE!", width/2, height/3);
+      } else {
+        fill("#D88C9A"); // Red from palette
+        text("GAME OVER", width/2, height/3);
+      }
+      
+      // Display stats
+      textSize(24);
+      fill("white");
+      text(`Score: ${finalScore}`, width/2, height/2 - 40);
+      text(`Area Claimed: ${finalArea.toFixed(2)}%`, width/2, height/2);
+      
+      // Options
+      textSize(30);
+      
+      // Restart button
+      let restartBtnY = height/2 + 80;
+      if (mouseY > restartBtnY - 25 && mouseY < restartBtnY + 25 && 
+          mouseX > width/2 - 100 && mouseX < width/2 + 100) {
+        fill("#8E7DBE"); // Purple from palette
+        if (mouse.presses()) {
+          // Pass false to resetGame to restart the game
+          resetGame(false);
+          return;
+        }
+      } else {
+        fill("white");
+      }
+      text("Play Again", width/2, restartBtnY);
+      
+      // Main menu button
+      let menuBtnY = height/2 + 140;
+      if (mouseY > menuBtnY - 25 && mouseY < menuBtnY + 25 && 
+          mouseX > width/2 - 100 && mouseX < width/2 + 100) {
+        fill("#8E7DBE"); // Purple from palette
+        if (mouse.presses()) {
+          // Pass true to resetGame to indicate we're going back to intro
+          resetGame(true);
+          return;
+        }
+      } else {
+        fill("white");
+      }
+      text("Main Menu", width/2, menuBtnY);
+      pop();
+    };
+  }
+  
+  // Create a blinking effect for the player with a reliable transition to the game over screen
+  let blinkCount = 0;
+  let blinkInterval = setInterval(() => {
+    if (player) {
+      player.visible = !player.visible;
+    }
+    blinkCount++;
+    
+    if (blinkCount >= 6) { // 3 blinks (on-off cycles)
+      clearInterval(blinkInterval);
+      if (player) {
+        player.visible = true;
+      }
+      
+      // After blinking, explicitly change the game state with a small delay
+      // to ensure all timers complete first
+      console.log("Changing game state to gameOverScreen");
+      setTimeout(() => {
+        gameState = gameOverScreen;
+        console.log("Game state changed to:", gameState.name || "gameOverScreen");
+      }, 100);
+    }
+  }, 300); // 300ms per state change
+}
+
+
+
+
+// Function to reset the game state
+function resetGame(toIntro = false) {
+  console.log("Resetting game. To intro:", toIntro);
+  
+  // Reset game variables
+  score = 0;
+  claimedArea = 0;
+  lives = 3;
+  level = 1;
+  
+  // Reset trail-related variables
+  trailStartPoint = null;
+  lastTrailSegmentPos = null;
+  previousBorderStatus = true;
+  lastBorderTouched = null;
+  
+  // Clear trails - using a more aggressive approach
+  // First try the standard removal
+  for (let i = trails.length - 1; i >= 0; i--) {
+    if (trails[i]) {
+      trails[i].remove();
+    }
+  }
+  
+  // As a backup, completely recreate the trails group
+  if (trails.length > 0) {
+    console.log("Using backup method to clear trails");
+    // Create a new trails group
+    trails = new Group();
+    trails.diameter = 8;
+    trails.color = "#FFBE0B";
+    trails.collider = 'k';
+  }
+  currentTrail = [];
+  
+  // Remove existing enemies
+  for (let enemy of qixi) {
+    enemy.remove();
+  }
+  for (let enemy of sparx) {
+    enemy.remove();
+  }
+  
+  // Remove existing hearts
+  for (let heart of hearts) {
+    heart.remove();
+  }
+  
+  // Remove all borders except the original four
+  while (Borders.length > 4) {
+    Borders[Borders.length - 1].remove();
+  }
+  
+  // Make sure the original borders are in the correct positions
+  Borders[0].x = gameField.x - gameField.w/2;
+  Borders[0].y = gameField.y;
+  Borders[0].w = 1;
+  Borders[0].h = gameField.h;
+  
+  Borders[1].x = gameField.x + gameField.w/2;
+  Borders[1].y = gameField.y;
+  Borders[1].w = 1;
+  Borders[1].h = gameField.h;
+  
+  Borders[2].x = gameField.x;
+  Borders[2].y = gameField.y - gameField.h/2;
+  Borders[2].w = gameField.w;
+  Borders[2].h = 1;
+  
+  Borders[3].x = gameField.x;
+  Borders[3].y = gameField.y + gameField.h/2;
+  Borders[3].w = gameField.w;
+  Borders[3].h = 1;
+  
+  // Recreate hearts
+  for (let x = 0; x < lives; x++) {
+    let heart = new hearts.Sprite();
+    heart.x = 50*x + 50;
+    heart.y = 50;
+  }
+  
+  // Reset player position
+  player.x = windowWidth / 2;
+  player.y = gameField.y + gameField.h / 2;
+  player.velocity.x = 0;
+  player.velocity.y = 0;
+  PspeedX = 0;
+  PspeedY = 0;
+  currentPlayerDirection = null;
+  
+  // Create new enemies
+  let newQix = new qixi.Sprite();
+  let newSparc = new sparx.Sprite();
+  
+  // Reset game field color
+  gameField.color = random(pallete);
+  
+  // Double-check all sprites' positions and visibility
+  for (let sprite of allSprites) {
+    // Reset any unexpected velocity
+    sprite.velocity.x = 0;
+    sprite.velocity.y = 0;
+  }
+  
+  // If returning to intro, hide all sprites
+  if (toIntro) {
+    for (let sprite of allSprites) {
+      sprite.visible = false;
+    }
+    gameState = intro;
+  } else {
+    // Make all sprites visible for gameplay (except any residual trails)
+    for (let sprite of allSprites) {
+      if (trails.includes(sprite)) {
+        // Additional check to hide any lingering trail sprites
+        sprite.visible = false;
+      } else {
+        sprite.visible = true;
+      }
+    }
+    // Resume game physics and updates
+    allSprites.autoUpdate = true;
+    world.autoStep = true;
+    // Set game state back to running
+    gameState = runGame;
+  }
 }
 
 //---QIX MOVEMENT-----------------------------------------------------------
@@ -733,9 +1066,26 @@ function convertTrailsToBorders() {
     }
   }
   
-  // Remove all trail segments
-  for (let segment of currentTrail) {
-    segment.remove();
+  // Remove all trail segments more aggressively
+  for (let i = currentTrail.length - 1; i >= 0; i--) {
+    let segment = currentTrail[i];
+    if (segment) {
+      segment.remove();
+      // Ensure the segment is no longer in the trails group
+      if (trails.includes(segment)) {
+        trails.remove(segment);
+      }
+    }
+  }
+  
+  // Clear the currentTrail array
+  currentTrail = [];
+  
+  // Additional cleanup for any orphaned trail segments
+  for (let trail of trails) {
+    if (trail && !currentTrail.includes(trail)) {
+      trail.remove();
+    }
   }
   
   // Visualize the claimed area

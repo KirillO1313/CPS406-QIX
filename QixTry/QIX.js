@@ -213,21 +213,20 @@ function intro(){
 //---GAME-------------------------------------------------------------------------
 function runGame(){
   background('#e3d5ca');
+   //---PlayThrough Info------------
   push();
     textSize(30);
     textAlign("left");
     text(" Score: "+score, width*0.01, height*0.2);
-    text(" Area Claimed: "+claimedArea.toFixed(2)+"%", width*0.01, height*0.3);
-    text(" Goal Area: 75%", width*0.01, height*0.4);
+    text("Score Multiplier: "+lives*100, width*0.01, height*0.3);
+    text(" Area Claimed: "+claimedArea.toFixed(2)+"%", width*0.01, height*0.4);
+    text(" Goal Area: 75%", width*0.01, height*0.5);
 
     textSize(20);
     text('↑', width * 0.9, height - (height * 0.3));
     text('← move →', width * 0.87, height - (height * 0.2));
     text('↓', width * 0.9, height - (height * 0.1));
   pop();
-
-  //---PlayThrough Info------------
-    //points, lives, etc
 
   // Only process game logic if we're actually in the runGame state
   // This check prevents movement updates when we're in a different state

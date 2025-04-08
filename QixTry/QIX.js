@@ -19,6 +19,7 @@ let player;
   let score = 0;
   let claimedArea = 0;
   let playersCurrentBorder = null; // Tracks the border the player is currently on
+  let playerLastBorder = null; // Tracks the last border the player was on last frame
 let PspeedX = 0;
 let PspeedY = 0;
 let currentPlayerDirection = null; // Tracks the current movement direction
@@ -30,7 +31,6 @@ let currentTrail = [];
 let trailStartPoint = null;
 let lastTrailSegmentPos = null;
 let previousBorderStatus = true; // Assuming player starts on border
-let lastBorderTouched = null;
 let trailSegmentDistance = 10;
 
 let qixi;
@@ -224,6 +224,7 @@ function runGame(){
   if (gameState === runGame) {
 
     //---PLAYER MEOVEMENT-------------------------------
+    playerLastBorder = playersCurrentBorder; // Store the last border before moving
     player.velocity.x = PspeedX; // Apply velocity based on current speed
     player.velocity.y = PspeedY;
     // Constrain player within game field
@@ -234,8 +235,6 @@ function runGame(){
     // Player just moved off border - start trail
     if (previousBorderStatus === true && currentBorderStatus === false) {
       trailStartPoint = createVector(player.x, player.y);
-      // Find which border was last touched
-      lastBorderTouched = findLastTouchedBorder();
       lastTrailSegmentPos = createVector(player.x, player.y);
       // Create the first trail segment
       createTrailSegment(player.x, player.y);
@@ -342,7 +341,7 @@ function playerHit() {
   trailStartPoint = null;
   lastTrailSegmentPos = null;
   previousBorderStatus = true;
-  lastBorderTouched = null;
+  playerLastBorder = null;
   
   // Clear current trail
   for (let segment of currentTrail) {
@@ -531,7 +530,7 @@ function resetGame(toIntro = false) {
   trailStartPoint = null;
   lastTrailSegmentPos = null;
   previousBorderStatus = true;
-  lastBorderTouched = null;
+  playerLastBorder = null;
   
   // Clear trails - using a more aggressive approach
   // First try the standard removal
@@ -997,7 +996,7 @@ function keyReleased() {
     stopMovement();
   }
 }
-//---TRAILS AND AREA-----------------------------------------------
+//---PLAYER TRAILS-----------------------------------------------
 function isPlayerOnBorder(tolerance = 5) {
   for (let border of Borders) {
     if (isOnBorder(player, border, tolerance)) {
@@ -1007,7 +1006,7 @@ function isPlayerOnBorder(tolerance = 5) {
   }
   return false;
 }
-function findLastTouchedBorder() {
+function findLastTouchedBorder() { /// using bigger tolerance to find the last border touched is ineffective, instead need to create variable to store the last border touched
   for (let border of Borders) {
     if (isOnBorder(player, border, 8)) {
       return border;
@@ -1020,18 +1019,6 @@ function createTrailSegment(x, y) {
   segment.x = x;
   segment.y = y;
   currentTrail.push(segment);
-}
-function attemptAreaClosure(currentBorder) {
-  // Ensure we have valid start and end points
-  if (!trailStartPoint || currentTrail.length < 2) return;
-  
-  // Calculate claimed area (simple version)
-  calculateClaimedArea();
-  
-  // Update score based on area claimed
-  // This is a placeholder - you'll need to implement area calculation
-  let areaPoints = Math.floor(currentTrail.length * 10);
-  score += areaPoints;
 }
 function convertTrailsToBorders() {
   // Simple version - convert each trail segment to a border
@@ -1087,6 +1074,19 @@ function convertTrailsToBorders() {
   
   // Visualize the claimed area
   visualizeAreaClaim();
+}
+//---AREA CLOSURE--------------------------------------------------
+function attemptAreaClosure(currentBorder) {
+  // Ensure we have valid start and end points
+  if (!trailStartPoint || currentTrail.length < 2) return;
+  
+  // Calculate claimed area (simple version)
+  calculateClaimedArea();
+  
+  // Update score based on area claimed
+  // This is a placeholder - you'll need to implement area calculation
+  let areaPoints = Math.floor(currentTrail.length * 10);
+  score += areaPoints;
 }
 function calculateClaimedArea() {
   // This is a simplified placeholder

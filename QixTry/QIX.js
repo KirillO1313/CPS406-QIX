@@ -18,6 +18,7 @@ let player;
   let lives = 3;
   let score = 0;
   let claimedArea = 0;
+  let playerInvinsible = false;
 let PspeedX = 0;
 let PspeedY = 0;
 let currentPlayerDirection = null; // Tracks the current movement direction
@@ -31,7 +32,7 @@ let lastTrailSegmentPos = null;
 let previousBorderStatus = true; // Assuming player starts on border
 let lastBorderTouched = null;
 let trailSegmentDistance = 20;
-let playerIsInvulnerable = false;
+
 
 let qixi;
 let sparx;
@@ -234,7 +235,7 @@ function runGame(){
   
   if (gameState === runGame) {
 // Only apply velocity if player is not invulnerable
-if (!playerIsInvulnerable) {
+if (!playerInvinsible) {
     //---PLAYER MEOVEMENT-------------------------------
     player.velocity.x = PspeedX; // Apply velocity based on current speed
     player.velocity.y = PspeedY;
@@ -243,7 +244,7 @@ if (!playerIsInvulnerable) {
     player.y = constrain(player.y, windowHeight / 2 - gameField.h / 2, windowHeight / 2 + gameField.h / 2);
 }
     //---TRAILS-----------------------------------------
-    if (!playerIsInvulnerable) {
+    if (!playerInvinsible) {
     const currentBorderStatus = isPlayerOnBorder();
     // Player just moved off border - start trail
     if (previousBorderStatus === true && currentBorderStatus === false) {
@@ -301,7 +302,7 @@ if (!playerIsInvulnerable) {
       updateSparc(sparc);
     }  
     //---collision checks-----------------------------------------
-    if (!playerIsInvulnerable) {
+    if (!playerInvinsible) {
     player.collides(sparx, playerHit);
     player.collides(qixi, checkPlayerCollision);
     player.collides(trails, playerHit);
@@ -416,10 +417,14 @@ function checkPlayerCollision() {
 
 //---PLAYER HIT------------------------------------------
 function playerHit() {
+  if (playerInvinsible) {
+    console.log("Player is invulnerable, ignoring hit");
+    return; // Ignore if player is invulnerable
+  }
+ // Set player as invulnerable
+  playerInvinsible= true;
   console.log("Player hit! Lives remaining:", lives - 1);
-  
-  // Set player as invulnerable
-  playerIsInvulnerable = true;
+ 
   
   // Ensure game field stays visible
   if (gameField) {
@@ -494,11 +499,11 @@ function playerHit() {
       world.autoStep = true;
       
       // Set player as no longer invulnerable
-      playerIsInvulnerable = false;
+      playerInvinsible = false;
       
       console.log("Player hit recovery complete, resuming game");
     }
-  }, 300); // 300ms per state change
+  }, 200); // 200ms per state change
     // Ensure field stays visible after recovery
     setTimeout(() => {
       if (gameField) {
@@ -1121,7 +1126,7 @@ function stopMovement() {
 function keyPressed() {
 
     // If player is invulnerable (blinking), ignore key presses
-    if (playerIsInvulnerable) {
+    if (playerInvinsible) {
       return;
     }
   // Get current time
@@ -1152,7 +1157,7 @@ function keyPressed() {
 function keyReleased() {
 
     // If player is invulnerable (blinking), ignore key presses
-    if (playerIsInvulnerable) {
+    if (playerInvinsible) {
       return;
     }
   // Stop movement only if the released key matches the current direction

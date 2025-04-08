@@ -31,6 +31,7 @@ let lastTrailSegmentPos = null;
 let previousBorderStatus = true; // Assuming player starts on border
 let lastBorderTouched = null;
 let trailSegmentDistance = 20;
+let playerIsInvulnerable = false;
 
 let qixi;
 let sparx;
@@ -227,15 +228,19 @@ function runGame(){
 
   // Only process game logic if we're actually in the runGame state
   // This check prevents movement updates when we're in a different state
+  
   if (gameState === runGame) {
-
+// Only apply velocity if player is not invulnerable
+if (!playerIsInvulnerable) {
     //---PLAYER MEOVEMENT-------------------------------
     player.velocity.x = PspeedX; // Apply velocity based on current speed
     player.velocity.y = PspeedY;
     // Constrain player within game field
     player.x = constrain(player.x, windowWidth / 2 - gameField.w / 2, windowWidth / 2 + gameField.w / 2);
     player.y = constrain(player.y, windowHeight / 2 - gameField.h / 2, windowHeight / 2 + gameField.h / 2);
+}
     //---TRAILS-----------------------------------------
+    if (!playerIsInvulnerable) {
     const currentBorderStatus = isPlayerOnBorder();
     // Player just moved off border - start trail
     if (previousBorderStatus === true && currentBorderStatus === false) {
@@ -250,6 +255,7 @@ function runGame(){
       segment.y = trailStartPoint.y;
       currentTrail.push(segment);
     }
+  
       // Player just moved back onto border - close trail
       if (previousBorderStatus === false && currentBorderStatus === true) {
         if (currentTrail.length > 0) {
@@ -283,6 +289,7 @@ function runGame(){
         createTrailSegment(player.x, player.y);
       }
     }
+  }
     //---ENEMY MOVEMENT------------------------------------
     for (let qix of qixi) { 
       updateQix(qix);
@@ -291,6 +298,7 @@ function runGame(){
       updateSparc(sparc);
     }  
     //---collision checks-----------------------------------------
+    if (!playerIsInvulnerable) {
     player.collides(sparx, playerHit);
     player.collides(qixi, checkPlayerCollision);
     player.collides(trails, playerHit);
@@ -308,6 +316,7 @@ function runGame(){
         }
       }
     }
+  }
     //---check player progress-------------------------------------
     if (claimedArea >= 75) {
       levelOver();
@@ -402,10 +411,14 @@ function checkPlayerCollision() {
   }
 }
 
+//---PLAYER HIT------------------------------------------
 function playerHit() {
   console.log("Player hit! Lives remaining:", lives - 1);
   
-  // Ensure game field stays visible - ADD THIS LINE
+  // Set player as invulnerable
+  playerIsInvulnerable = true;
+  
+  // Ensure game field stays visible
   if (gameField) {
     gameField.visible = true;
   }
@@ -477,10 +490,13 @@ function playerHit() {
       allSprites.autoUpdate = true;
       world.autoStep = true;
       
+      // Set player as no longer invulnerable
+      playerIsInvulnerable = false;
+      
       console.log("Player hit recovery complete, resuming game");
     }
   }, 300); // 300ms per state change
-    // Ensure field stays visible after recovery - ADD THIS BLOCK
+    // Ensure field stays visible after recovery
     setTimeout(() => {
       if (gameField) {
         gameField.visible = true;
@@ -1100,6 +1116,11 @@ function stopMovement() {
   currentPlayerDirection = null; // Clear direction
 }
 function keyPressed() {
+
+    // If player is invulnerable (blinking), ignore key presses
+    if (playerIsInvulnerable) {
+      return;
+    }
   // Get current time
   let currentTime = millis();
 
@@ -1126,6 +1147,11 @@ function keyPressed() {
   lastDirection = currentPlayerDirection;
 }
 function keyReleased() {
+
+    // If player is invulnerable (blinking), ignore key presses
+    if (playerIsInvulnerable) {
+      return;
+    }
   // Stop movement only if the released key matches the current direction
   if (keyCode === 40 && currentPlayerDirection === 'down') { // DOWN ARROW
     stopMovement();
@@ -1223,42 +1249,62 @@ function convertTrailsToBorders() {
   if (currentTrail.length < 2) return;
   
   try {
+    let createdBorders = [];
+    
     // Ensure we create borders only along clear horizontal or vertical paths
     for (let i = 0; i < currentTrail.length - 1; i++) {
       const seg1 = currentTrail[i];
       const seg2 = currentTrail[i + 1];
       
-      if (!seg1 || !seg2) continue;
-      
+      if (!seg1 || !seg2) {
+        console.log(`Segment ${i} or ${i+1} is null, skipping`);
+        continue;
+      }
       // Calculate the actual distance between points
       const distance = dist(seg1.x, seg1.y, seg2.x, seg2.y);
       
+      // Is this a horizontal, vertical or diagonal segment?
+      const isHorizontal = Math.abs(seg1.y - seg2.y) < 1;
+      const isVertical = Math.abs(seg1.x - seg2.x) < 1;
+      
       // Only create a border if points are close enough to be legitimate connections
       if (distance <= trailSegmentDistance * 1.5) {
-        
-        // For perfectly horizontal segments (improved tolerance check)
-        if (Math.abs(seg1.y - seg2.y) < 1) {
+        // For perfectly horizontal segments
+        if (isHorizontal) {
           let newBorder = new Borders.Sprite();
-          newBorder.y = Math.round(seg1.y); // Round to nearest integer
+          newBorder.y = Math.round(seg1.y);
           newBorder.x = (seg1.x + seg2.x) / 2;
           newBorder.w = Math.abs(seg2.x - seg1.x);
-          newBorder.h = 3; // Thicker borders (3px instead of 1px)
+          newBorder.h = 3; 
           newBorder.color = "#000000";
           newBorder.collider = 'k';
+          createdBorders.push({
+            type: "horizontal",
+            x: newBorder.x,
+            y: newBorder.y,
+            w: newBorder.w,
+            h: newBorder.h
+          });
         } 
         // For perfectly vertical segments
-        else if (Math.abs(seg1.x - seg2.x) < 1) {
+        else if (isVertical) {
           let newBorder = new Borders.Sprite();
-          newBorder.x = Math.round(seg1.x); // Round to nearest integer
+          newBorder.x = Math.round(seg1.x);
           newBorder.y = (seg1.y + seg2.y) / 2;
-          newBorder.w = 3; // Thicker borders
+          newBorder.w = 3;
           newBorder.h = Math.abs(seg2.y - seg1.y);
           newBorder.color = "#000000";
           newBorder.collider = 'k';
+          createdBorders.push({
+            type: "vertical",
+            x: newBorder.x,
+            y: newBorder.y,
+            w: newBorder.w,
+            h: newBorder.h
+          });
         }
-        // For diagonal segments, create a proper L-shape with adjusted coordinates
+        // For diagonal segments
         else {
-          // Create an L-shape with precise connecting points
           
           // First calculate the exact intermediate point (corner of the L)
           const cornerX = seg2.x;
@@ -1269,35 +1315,72 @@ function convertTrailsToBorders() {
           horizBorder.y = Math.round(seg1.y);
           horizBorder.x = (seg1.x + cornerX) / 2;
           horizBorder.w = Math.abs(cornerX - seg1.x);
-          horizBorder.h = 3; // Thicker
-          horizBorder.color = "#000000";
+          horizBorder.h = 3;
+          horizBorder.color = "#FF0000"; // RED for debugging
           horizBorder.collider = 'k';
+          
+          createdBorders.push({
+            type: "diagonal-h",
+            x: horizBorder.x,
+            y: horizBorder.y,
+            w: horizBorder.w,
+            h: horizBorder.h
+          });
           
           // Second segment (vertical)
           let vertBorder = new Borders.Sprite();
           vertBorder.x = Math.round(seg2.x);
           vertBorder.y = (cornerY + seg2.y) / 2;
-          vertBorder.w = 3; // Thicker
+          vertBorder.w = 3;
           vertBorder.h = Math.abs(seg2.y - cornerY);
-          vertBorder.color = "#000000";
+          vertBorder.color = "#0000FF"; // BLUE for debugging
           vertBorder.collider = 'k';
+          
+          console.log(`  Vert part: x=${vertBorder.x}, y=${vertBorder.y.toFixed(2)}, w=${vertBorder.w}, h=${vertBorder.h.toFixed(2)}`);
+          createdBorders.push({
+            type: "diagonal-v",
+            x: vertBorder.x,
+            y: vertBorder.y,
+            w: vertBorder.w,
+            h: vertBorder.h
+          });
+          
+          // Add a small square exactly at the corner to ensure connection
+          let cornerBorder = new Borders.Sprite();
+          cornerBorder.x = cornerX;
+          cornerBorder.y = cornerY;
+          cornerBorder.w = 3;
+          cornerBorder.h = 3;
+          cornerBorder.color = "#00FF00"; // GREEN for debugging
+          cornerBorder.collider = 'k';
+          console.log(`  Corner piece: x=${cornerBorder.x}, y=${cornerBorder.y}`);
         }
+      } else {
+        console.log(`  Distance too large (${distance.toFixed(2)} > ${trailSegmentDistance * 1.5}), skipping`);
       }
     }
     
-    // Handle sparx AFTER all borders are created (outside the loop)
+    console.log(`Created ${createdBorders.length} border segments`);
+    
+    // Debug: Visualize all borders
+    console.log("=== ALL BORDERS AFTER CREATION ===");
+    for (let i = 0; i < Borders.length; i++) {
+      const b = Borders[i];
+      console.log(`Border ${i}: x=${b.x.toFixed(1)}, y=${b.y.toFixed(1)}, w=${b.w.toFixed(1)}, h=${b.h.toFixed(1)}`);
+    }
+    
+    // Handle sparx AFTER all borders are created
     for (let sparc of sparx) {
-      // Reset sparc's handling corner flag
       sparc.isHandlingCorner = false;
-      
-      // If sparc is not on any border, move it to the nearest border
       if (!isSparcOnBorder(sparc)) {
         findAndMoveToNearestBorder(sparc);
       }
     }
     
-    // Clear trail segments AFTER processing all borders (outside the loop)
+    // Clear trail segments AFTER processing all borders
     clearTrailSegments();
+    
+    console.log("=== END TRAIL CONVERSION ===");
     
   } catch (error) {
     console.error("Error in convertTrailsToBorders:", error);
@@ -1856,7 +1939,7 @@ function createAreaFill(polygon) {
     claimedSprite.opacity = 0.5; // Semi-transparent
     
     // Make sure it's behind other elements
-    claimedSprite.layer = -1;
+    claimedSprite.layer = 1;
     claimedSprite.collider = 'n'; // No collision
     
     // Store for tracking

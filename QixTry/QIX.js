@@ -213,12 +213,16 @@ function intro(){
 //---GAME-------------------------------------------------------------------------
 function runGame(){
   background('#e3d5ca');
-  //---Display directions/info---
-  //add some description of how to play maybe?
   push();
+    textSize(30);
+    textAlign("left");
+    text(" Score: "+score, width*0.01, height*0.2);
+    text(" Area Claimed: "+claimedArea.toFixed(2)+"%", width*0.01, height*0.3);
+    text(" Goal Area: 75%", width*0.01, height*0.4);
+
     textSize(20);
     text('↑', width * 0.9, height - (height * 0.3));
-    text('← move →', width * 0.9, height - (height * 0.2));
+    text('← move →', width * 0.87, height - (height * 0.2));
     text('↓', width * 0.9, height - (height * 0.1));
   pop();
 
@@ -820,7 +824,7 @@ function updateQix(qix){
 }
 
 //---SPARX MOVEMENT--------------------------------------------------------
-function updateSparc(sparc) {
+function updateSparc(sparc ) {
   // Get sparc's current position
   const x = sparc.x;
   const y = sparc.y;
@@ -1208,7 +1212,7 @@ function attemptAreaClosure(currentBorder) {
     if (areaPercentage) {
       // Update game state
       claimedArea += areaPercentage;
-      score += Math.floor(areaPercentage * 100);
+      score += Math.floor(areaPercentage * 100 * lives);
       
       // Visual feedback
       flashGameField();

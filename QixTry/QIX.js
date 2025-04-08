@@ -18,6 +18,7 @@ let player;
   let lives = 3;
   let score = 0;
   let claimedArea = 0;
+  let playersCurrentBorder = null; // Tracks the border the player is currently on
 let PspeedX = 0;
 let PspeedY = 0;
 let currentPlayerDirection = null; // Tracks the current movement direction
@@ -242,9 +243,7 @@ function runGame(){
     // Player just moved back onto border - close trail
     if (previousBorderStatus === false && currentBorderStatus === true) {
       if (currentTrail.length > 0) {
-        // Find current touched border
-        const currentBorder = findCurrentTouchedBorder();
-        attemptAreaClosure(currentBorder);
+        attemptAreaClosure(playersCurrentBorder);
         convertTrailsToBorders();
         // Reset trail tracking
         currentTrail = [];
@@ -1002,6 +1001,7 @@ function keyReleased() {
 function isPlayerOnBorder(tolerance = 5) {
   for (let border of Borders) {
     if (isOnBorder(player, border, tolerance)) {
+     playersCurrentBorder = border;
       return true;
     }
   }
@@ -1014,9 +1014,6 @@ function findLastTouchedBorder() {
     }
   }
   return null;
-}
-function findCurrentTouchedBorder() {
-  return findLastTouchedBorder(); // Same logic but when returning to a border
 }
 function createTrailSegment(x, y) {
   let segment = new trails.Sprite();

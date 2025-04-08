@@ -93,7 +93,7 @@ hearts = new Group();
 for (let x = 0; x < lives;  x++) {
   let heart = new hearts.Sprite();
   heart.x = 50*x + 50;
-  hearts.y = 50;
+  hearts.y = 50;1
 }
 
 //--PLAYER AND ENEMIES---

@@ -26,12 +26,12 @@ let currentPlayerDirection = null; // Tracks the current movement direction
 let lastPlayerDirChange = 0; // Timestamp of the last direction change
 const DIRECTION_COOLDOWN = 200; // Cooldown in milliseconds (adjustable)
  
-let trails;
-let currentTrail = [];
-let trailStartPoint = null;
-let lastTrailSegmentPos = null;
+let currentTrailSegments = []; // Array of active trail segments
+let lastDirection = null; // Last movement direction
+let trailStartBorder = null; // Border where trail started
+let isDrawingTrail = false; // Whether we're currently drawing a trail
+
 let previousBorderStatus = true; // Assuming player starts on border
-let trailSegmentDistance = 10;
 
 let qixi;
 let sparx;
@@ -104,8 +104,7 @@ for (let x = 0; x < lives;  x++) {
     player.collider = 'k';
 
 //players trail 
-trails = new Group();
-  trails.diameter = 8;  
+trails = new Group(); 
   trails.color = "#FFBE0B"; 
   trails.collider = 'k';
 
@@ -222,43 +221,32 @@ function runGame(){
   // Only process game logic if we're actually in the runGame state
   // This check prevents movement updates when we're in a different state
   if (gameState === runGame) {
+   //---PLAYER MOVEMENT-------------------------------
+   playerLastBorder = playersCurrentBorder; // Store the last border before moving
+   player.velocity.x = PspeedX; // Apply velocity based on current speed
+   player.velocity.y = PspeedY;
+   // Constrain player within game field
+   player.x = constrain(player.x, windowWidth / 2 - gameField.w / 2, windowWidth / 2 + gameField.w / 2);
+   player.y = constrain(player.y, windowHeight / 2 - gameField.h / 2, windowHeight / 2 + gameField.h / 2);
 
-    //---PLAYER MEOVEMENT-------------------------------
-    playerLastBorder = playersCurrentBorder; // Store the last border before moving
-    player.velocity.x = PspeedX; // Apply velocity based on current speed
-    player.velocity.y = PspeedY;
-    // Constrain player within game field
-    player.x = constrain(player.x, windowWidth / 2 - gameField.w / 2, windowWidth / 2 + gameField.w / 2);
-    player.y = constrain(player.y, windowHeight / 2 - gameField.h / 2, windowHeight / 2 + gameField.h / 2);
-    //---TRAILS-----------------------------------------
-    const currentBorderStatus = isPlayerOnBorder();
-    // Player just moved off border - start trail
-    if (previousBorderStatus === true && currentBorderStatus === false) {
-      trailStartPoint = createVector(player.x, player.y);
-      lastTrailSegmentPos = createVector(player.x, player.y);
-      // Create the first trail segment
-      createTrailSegment(player.x, player.y);
-    }
-    // Player just moved back onto border - close trail
-    if (previousBorderStatus === false && currentBorderStatus === true) {
-      if (currentTrail.length > 0) {
-        attemptAreaClosure(playersCurrentBorder);
-        convertTrailsToBorders();
-        // Reset trail tracking
-        currentTrail = [];
-      }
-    }
-    previousBorderStatus = currentBorderStatus;
-    // create trail segments:
-    if (!isPlayerOnBorder()) {
-      // Calculate distance from last segment
-      const distFromLast = dist(player.x, player.y, lastTrailSegmentPos.x, lastTrailSegmentPos.y);
-      if (distFromLast >= trailSegmentDistance) {
-        createTrailSegment(player.x, player.y);
-        lastTrailSegmentPos.x = player.x;
-        lastTrailSegmentPos.y = player.y;
-      }
-    }
+ //---TRAILS-----------------------------------------
+ currentBorderStatus = isPlayerOnBorder();
+    
+ // Player just moved off border - start trail
+ if (previousBorderStatus === true && currentBorderStatus === false) {
+   startTrail();
+ }
+ // Player is off border - update trail
+ else if (currentBorderStatus === false) {
+   updateTrail();
+ }
+ // Player just moved back onto border - close trail
+ else if (previousBorderStatus === false && currentBorderStatus === true) {
+   completeTrail();
+ }
+ 
+ previousBorderStatus = currentBorderStatus;
+
     //---ENEMY MOVEMENT------------------------------------
     for (let qix of qixi) { 
       updateQix(qix);
@@ -338,18 +326,17 @@ function playerHit() {
   }
   
   // Reset trail-related variables
-  trailStartPoint = null;
-  lastTrailSegmentPos = null;
-  previousBorderStatus = true;
-  playerLastBorder = null;
+  isDrawingTrail = false;
+  trailStartBorder = null;
+  lastDirection = null;
   
-  // Clear current trail
-  for (let segment of currentTrail) {
+  // Remove all trail segments
+  for (let segment of currentTrailSegments) {
     if (segment) {
       segment.remove();
     }
   }
-  currentTrail = [];
+  currentTrailSegments = [];
   
   // Store original player position to return to later
   const originalX = windowWidth / 2;
@@ -1006,86 +993,157 @@ function isPlayerOnBorder(tolerance = 5) {
   }
   return false;
 }
-function findLastTouchedBorder() { /// using bigger tolerance to find the last border touched is ineffective, instead need to create variable to store the last border touched
-  for (let border of Borders) {
-    if (isOnBorder(player, border, 8)) {
-      return border;
-    }
-  }
-  return null;
-}
-function createTrailSegment(x, y) {
+// Call this when player moves off a border
+function startTrail() {
+  isDrawingTrail = true;
+  trailStartBorder = playersCurrentBorder;
+  lastDirection = currentPlayerDirection;
+  
+  // Create first trail segment
   let segment = new trails.Sprite();
-  segment.x = x;
-  segment.y = y;
-  currentTrail.push(segment);
+  segment.x = player.x;
+  segment.y = player.y;
+  segment.w = 5; // Start with a small width
+  segment.h = 5; // Start with a small height
+  segment.startX = player.x; // Remember starting point
+  segment.startY = player.y;
+  
+  currentTrailSegments.push(segment);
 }
-function convertTrailsToBorders() {
-  // Simple version - convert each trail segment to a border
-  // You'll want to optimize this to create fewer, longer border segments
+// Call this every frame when player is off borders
+function updateTrail() {
+  if (!isDrawingTrail || currentTrailSegments.length === 0) return;
   
-  if (currentTrail.length < 2) return;
-  
-  // Create new borders from trail segments
-  for (let i = 0; i < currentTrail.length - 1; i++) {
-    let seg1 = currentTrail[i];
-    let seg2 = currentTrail[i + 1];
+  // Check if direction changed
+  if (currentPlayerDirection !== lastDirection && currentPlayerDirection !== null) {
+    // Create a new segment for the new direction
+    let segment = new trails.Sprite();
+    segment.x = player.x;
+    segment.y = player.y;
+    segment.w = 5;
+    segment.h = 5;
+    segment.startX = player.x;
+    segment.startY = player.y;
     
-    // Create a border between these points
-    let newBorder = new Borders.Sprite();
-    
-    // For horizontal movement
-    if (Math.abs(seg1.y - seg2.y) < 5) {
-      newBorder.y = seg1.y;
-      newBorder.x = (seg1.x + seg2.x) / 2;
-      newBorder.w = Math.abs(seg2.x - seg1.x);
-      newBorder.h = 1;
-    } 
-    // For vertical movement
-    else {
-      newBorder.x = seg1.x;
-      newBorder.y = (seg1.y + seg2.y) / 2;
-      newBorder.w = 1;
-      newBorder.h = Math.abs(seg2.y - seg1.y);
-    }
+    currentTrailSegments.push(segment);
+    lastDirection = currentPlayerDirection;
   }
   
-  // Remove all trail segments more aggressively
-  for (let i = currentTrail.length - 1; i >= 0; i--) {
-    let segment = currentTrail[i];
-    if (segment) {
-      segment.remove();
-      // Ensure the segment is no longer in the trails group
-      if (trails.includes(segment)) {
-        trails.remove(segment);
+  // Update the current (last) segment
+  let currentSegment = currentTrailSegments[currentTrailSegments.length - 1];
+  
+  // Horizontal movement
+  if (currentPlayerDirection === 'left' || currentPlayerDirection === 'right') {
+    // Set height to trail thickness
+    currentSegment.h = 5;
+    
+    // Update width and position based on direction
+    if (currentPlayerDirection === 'right') {
+      let segmentWidth = player.x - currentSegment.startX;
+      currentSegment.w = Math.abs(segmentWidth) + 5; // Add player radius
+      currentSegment.x = currentSegment.startX + segmentWidth / 2;
+    } else {
+      let segmentWidth = currentSegment.startX - player.x;
+      currentSegment.w = Math.abs(segmentWidth) + 5; // Add player radius
+      currentSegment.x = player.x + segmentWidth / 2;
+    }
+  }
+  // Vertical movement
+  else if (currentPlayerDirection === 'up' || currentPlayerDirection === 'down') {
+    // Set width to trail thickness
+    currentSegment.w = 5;
+    
+    // Update height and position based on direction
+    if (currentPlayerDirection === 'down') {
+      let segmentHeight = player.y - currentSegment.startY;
+      currentSegment.h = Math.abs(segmentHeight) + 5; // Add player radius
+      currentSegment.y = currentSegment.startY + segmentHeight / 2;
+    } else {
+      let segmentHeight = currentSegment.startY - player.y;
+      currentSegment.h = Math.abs(segmentHeight) + 5; // Add player radius
+      currentSegment.y = player.y + segmentHeight / 2;
+    }
+  }
+}
+// Call this when player reaches a border
+function completeTrail() {
+  if (!isDrawingTrail || currentTrailSegments.length === 0) return;
+  
+  // Update the last segment to connect to the border
+  let finalSegment = currentTrailSegments[currentTrailSegments.length - 1];
+  
+  // Determine how to extend the segment based on the border orientation and player direction
+  // This will need logic to determine how to connect to the border
+  
+  // For horizontal borders
+  if (playersCurrentBorder.w >= playersCurrentBorder.h) {
+    // Extend segment to border Y position
+    if (finalSegment.h > finalSegment.w) { // Vertical segment
+      if (player.y < playersCurrentBorder.y) {
+        finalSegment.h = Math.abs(finalSegment.startY - playersCurrentBorder.y);
+        finalSegment.y = (finalSegment.startY + playersCurrentBorder.y) / 2;
+      } else {
+        finalSegment.h = Math.abs(playersCurrentBorder.y - finalSegment.startY);
+        finalSegment.y = (finalSegment.startY + playersCurrentBorder.y) / 2;
+      }
+    }
+  }
+  // For vertical borders
+  else {
+    // Extend segment to border X position
+    if (finalSegment.w > finalSegment.h) { // Horizontal segment
+      if (player.x < playersCurrentBorder.x) {
+        finalSegment.w = Math.abs(finalSegment.startX - playersCurrentBorder.x);
+        finalSegment.x = (finalSegment.startX + playersCurrentBorder.x) / 2;
+      } else {
+        finalSegment.w = Math.abs(playersCurrentBorder.x - finalSegment.startX);
+        finalSegment.x = (finalSegment.startX + playersCurrentBorder.x) / 2;
       }
     }
   }
   
-  // Clear the currentTrail array
-  currentTrail = [];
+  // Convert trails to borders
+  convertTrailsToBorders();
   
-  // Additional cleanup for any orphaned trail segments
-  for (let trail of trails) {
-    if (trail && !currentTrail.includes(trail)) {
-      trail.remove();
-    }
+  // Reset trail state
+  isDrawingTrail = false;
+  currentTrailSegments = [];
+  lastDirection = null;
+  trailStartBorder = null;
+}
+function convertTrailsToBorders() {
+  if (currentTrailSegments.length === 0) return;
+  
+  // Convert each trail segment to a border
+  for (let segment of currentTrailSegments) {
+    let newBorder = new Borders.Sprite();
+    newBorder.x = segment.x;
+    newBorder.y = segment.y;
+    newBorder.w = segment.w;
+    newBorder.h = segment.h;
+    
+    // Remove the trail segment
+    segment.remove();
   }
   
-  // Visualize the claimed area
+  // Calculate area claim
+  calculateClaimedArea();
+  
+  // Visual effect
   visualizeAreaClaim();
 }
+
 //---AREA CLOSURE--------------------------------------------------
 function attemptAreaClosure(currentBorder) {
   // Ensure we have valid start and end points
-  if (!trailStartPoint || currentTrail.length < 2) return;
+  if (!trailStartPoint || currentTrailSegments.length < 2) return;
   
   // Calculate claimed area (simple version)
   calculateClaimedArea();
   
   // Update score based on area claimed
   // This is a placeholder - you'll need to implement area calculation
-  let areaPoints = Math.floor(currentTrail.length * 10);
+  let areaPoints = Math.floor(currentTrailSegments.length * 10);
   score += areaPoints;
 }
 function calculateClaimedArea() {
@@ -1094,8 +1152,8 @@ function calculateClaimedArea() {
   // 1. Identify the enclosed area
   // 2. Calculate its size relative to the game field
   
-  // Simple approximation based on trail length
-  let estimatedArea = currentTrail.length * trailSegmentDistance;
+  // garbage approximation based on trail length
+  let estimatedArea = currentTrailSegments.length * 10;
   let totalArea = gameField.w * gameField.h;
   let areaPercentage = Math.min((estimatedArea / totalArea) * 100, 20);
   
@@ -1133,3 +1191,7 @@ function isOnBorder(sprite, border, tolerance = 5) {
             sprite.y <= border.y + border.h/2 + tolerance;
     }
 }
+
+
+  
+ 

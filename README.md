@@ -25,14 +25,16 @@ QIX is a territory-claiming game where the player must claim areas of the screen
 - Claim 75% of the screen to win the game
 
 ## Technologies Used
-- JavaScript
-- p5play.js / q5.js
+- JavaScript:
+    - p5play.js / q5.js
 - HTML5 Canvas
 
 ## Project Structure
 - `QIX.js`: Main game code
-- `index.html`: Game HTML wrapper
+- `QIX.html`: Game HTML wrapper
+- `QIXBase.css`: css for foramting p5play canvas
 - `assets/`: Contains images and fonts
+- `.json`: Contains code for setting up/managing p5play enviroment 
 
 ## Credits
 - Original QIX game by Taito (1981)

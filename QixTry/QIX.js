@@ -41,9 +41,9 @@ let sparcSpeed = 2;
 
 
 function preload(){
-  cover = loadImage("coverArt.png");
-  heartImg = loadImage("heart.png");
-  font = loadFont('LLDEtechnoGlitchGX.ttf');
+  cover = loadImage("assets/coverArt.png");
+  heartImg = loadImage("assets/heart.png");
+  font = loadFont('assets/LLDEtechnoGlitchGX.ttf');
 }
 function setup() {
   new Canvas(windowWidth, windowHeight);

@@ -63,8 +63,9 @@ function setup() {
   Borders = new Group();
     Borders.collider = 'k';
     Borders.color = "#000000";
+    Borders.layer = 2;
     const BORDER_THICKNESS = 3;
-    // Borders.visible = false;
+
   while( Borders.length < 2){ //make default left border
     let ogBorder = new Borders.Sprite();
     ogBorder.x = gameField.x - gameField.w/2;
@@ -85,18 +86,20 @@ function setup() {
     //bottom border
     Borders[3].y = gameField.y + gameField.h/2;   
 
+    initOriginalBorders();
+    markOriginalBorders();
 
-//---hearts---
-hearts = new Group();
-    hearts.image = heartImg;
-    hearts.collider = "s";
-for (let x = 0; x < lives;  x++) {
-  let heart = new hearts.Sprite();
-  heart.x = 50*x + 50;
-  hearts.y = 50;1
-}
+  //---hearts---
+  hearts = new Group();
+      hearts.image = heartImg;
+      hearts.collider = "s";
+  for (let x = 0; x < lives;  x++) {
+    let heart = new hearts.Sprite();
+    heart.x = 50*x + 50;
+    hearts.y = 50;1
+  }
 
-//--PLAYER AND ENEMIES---
+  //--PLAYER AND ENEMIES---
   player = new Sprite();
     player.diameter = 25;
     player.x = windowWidth / 2;
@@ -105,13 +108,14 @@ for (let x = 0; x < lives;  x++) {
     player.velocity.y = 0;
     player.color = "#8CB369";
     player.collider = 'k';
+    player.layer = 5; // Higher layer than trails
 
-//players trail 
-trails = new Group();
-trails.diameter = 1;  // Small size to match borders
-trails.color = "#000000"; // Black color to match borders
-trails.layer = 1; // Make sure trails draw on top
-trails.collider = 'k';
+  //players trail 
+  trails = new Group();
+  trails.diameter = 1;  // Small size to match borders
+  trails.color = "#000000"; // Black color to match borders
+  trails.layer = 1; // Make sure trails draw on top
+  trails.collider = 'k';
 
   qixi = new Group();
     qixi.x = gameField.x;
@@ -126,6 +130,7 @@ trails.collider = 'k';
     qixi.velocity.x = random(-2, 2);
     qixi.velocity.y = random(-2, 2);
     qixi.maxSpeed = 2;
+    qixi.layer = 5; // Higher layer than trails
 
   sparx = new Group();
     sparx.x = gameField.x;
@@ -142,13 +147,14 @@ trails.collider = 'k';
       sparc.isHandlingCorner = false;
       sparc.cornerPoint = null;
     }
+    sparx.layer = 5; // Higher layer than trails
 
   let ogQix = new qixi.Sprite();
 	let ogSparc = new sparx.Sprite();
   
-    // Initialize tracking for claimed areas
-    window.lastClaimedArea = [];
-    window.claimedSprites = [];
+  // Initialize tracking for claimed areas
+  window.lastClaimedArea = [];
+  window.claimedSprites = [];
 
   //---Layering-------------------------
   player.overlaps(gameField);
@@ -231,18 +237,17 @@ function runGame(){
   pop();
 
   // Only process game logic if we're actually in the runGame state
-  // This check prevents movement updates when we're in a different state
-  
+
   if (gameState === runGame) {
-// Only apply velocity if player is not invulnerable
-if (!playerInvinsible) {
-    //---PLAYER MEOVEMENT-------------------------------
-    player.velocity.x = PspeedX; // Apply velocity based on current speed
-    player.velocity.y = PspeedY;
-    // Constrain player within game field
-    player.x = constrain(player.x, windowWidth / 2 - gameField.w / 2, windowWidth / 2 + gameField.w / 2);
-    player.y = constrain(player.y, windowHeight / 2 - gameField.h / 2, windowHeight / 2 + gameField.h / 2);
-}
+  // Only apply velocity if player is not invulnerable
+  if (!playerInvinsible) {
+      //---PLAYER MEOVEMENT-------------------------------
+      player.velocity.x = PspeedX; // Apply velocity based on current speed
+      player.velocity.y = PspeedY;
+      // Constrain player within game field
+      player.x = constrain(player.x, windowWidth / 2 - gameField.w / 2, windowWidth / 2 + gameField.w / 2);
+      player.y = constrain(player.y, windowHeight / 2 - gameField.h / 2, windowHeight / 2 + gameField.h / 2);
+  }
     //---TRAILS-----------------------------------------
     if (!playerInvinsible) {
     const currentBorderStatus = isPlayerOnBorder();
@@ -272,7 +277,7 @@ if (!playerInvinsible) {
           finalSegment.y = borderEndPoint.y;
           currentTrail.push(finalSegment);
           
-          // The critical fix: don't try to create a path back to the start
+          //  don't try to create a path back to the start
           // Just use the current trail as is
           attemptAreaClosure(findCurrentTouchedBorder());
           convertTrailsToBorders();
@@ -284,7 +289,6 @@ if (!playerInvinsible) {
       // Only create new segments when actually needed
       if (lastTrailSegmentPos) {
         const distFromLast = dist(player.x, player.y, lastTrailSegmentPos.x, lastTrailSegmentPos.y);
-        // OPTIMIZATION: Increase distance threshold
         if (distFromLast >= trailSegmentDistance) {
           createTrailSegment(player.x, player.y);
         }
@@ -327,7 +331,6 @@ if (!playerInvinsible) {
     }
 }
 
-// Add to your runGame function before allSprites.draw():
 if (currentTrail.length > 1) {
   push();
   strokeWeight(1); // Thin line like borders
@@ -360,35 +363,7 @@ if (gameField) {
   gameField.visible = true;
 }
 
- window.Areas = [];
-// Add to your runGame function before allSprites.draw():
-if (currentTrail.length > 1) {
-  push();
-  strokeWeight(1); // Thin line like borders
-  stroke(0); // Black lines matching borders
-  noFill();
-  
-  // Start from the trail start point if available
-  if (trailStartPoint) {
-    beginShape();
-    vertex(trailStartPoint.x, trailStartPoint.y);
-    
-    // Add all trail segment vertices
-    for (let segment of currentTrail) {
-      if (segment) {
-        vertex(segment.x, segment.y);
-      }
-    }
-    
-    // Add current player position if still creating trail
-    if (!isPlayerOnBorder()) {
-      vertex(player.x, player.y);
-    }
-    
-    endShape();
-  }
-  pop();
-}
+checkForStuckSparx();
 //---world update------
   // These are kept outside the conditional to ensure sprites still render
   // in all game states, but they don't update positions/logic if not in runGame
@@ -457,7 +432,6 @@ function playerHit() {
   
   // Check for game over
   if (lives <= 0 || hearts.length === 0) {
-    console.log("Game over - calling levelOver()");
     levelOver();
     return; // Important: exit the function early if game over
   }
@@ -500,9 +474,7 @@ function playerHit() {
       
       // Set player as no longer invulnerable
       playerInvinsible = false;
-      
-      console.log("Player hit recovery complete, resuming game");
-    }
+          }
   }, 200); // 200ms per state change
     // Ensure field stays visible after recovery
     setTimeout(() => {
@@ -515,7 +487,6 @@ function playerHit() {
 //---LEVEL OVER---------------------------------------------------------------
 
 function levelOver() {
-  console.log("Level over function called");
   
   // Force game state to ensure we're in a known state
   gameState = runGame;
@@ -547,10 +518,8 @@ function levelOver() {
   
   // Make sure gameOverScreen function exists before we try to use it
   if (typeof gameOverScreen !== 'function') {
-    console.log("Creating gameOverScreen function");
     
     window.gameOverScreen = function() {
-      console.log("Running gameOverScreen");
       
       background('#e3d5ca');
       gameField.visible = true;
@@ -638,21 +607,15 @@ function levelOver() {
       
       // After blinking, explicitly change the game state with a small delay
       // to ensure all timers complete first
-      console.log("Changing game state to gameOverScreen");
       setTimeout(() => {
         gameState = gameOverScreen;
-        console.log("Game state changed to:", gameState.name || "gameOverScreen");
       }, 100);
     }
   }, 300); // 300ms per state change
 }
 
-
-
-
 // Function to reset the game state
 function resetGame(toIntro = false) {
-  console.log("Resetting game. To intro:", toIntro);
   
   // Ensure the game field is visible - ADD THIS BLOCK
   if (gameField) {
@@ -844,45 +807,106 @@ function updateQix(qix){
 }
 
 //---SPARX MOVEMENT--------------------------------------------------------
-function updateSparc(sparc ) {
-  // Get sparc's current position
-  const x = sparc.x;
-  const y = sparc.y;
-  
-  // Find the current border the sparc is on (if any)
-  let currentBorder = null;
-  for (let border of Borders) {
-    if (isOnBorder(sparc, border, 3)) {
-      currentBorder = border;
-      break;
+function updateSparc(sparc) {
+  try {
+    // Update stuck detection
+    if (!sparc.lastX) {
+      sparc.lastX = sparc.x;
+      sparc.lastY = sparc.y;
+      sparc.stuckTime = 0;
+    } else {
+      // Check if position changed significantly
+      if (dist(sparc.x, sparc.y, sparc.lastX, sparc.lastY) < 0.5) {
+        sparc.stuckTime = (sparc.stuckTime || 0) + 1;
+      } else {
+        // Reset if moving normally
+        sparc.lastX = sparc.x;
+        sparc.lastY = sparc.y;
+        sparc.stuckTime = 0;
+      }
+      
+      // Emergency recovery if stuck too long
+      if (sparc.stuckTime > 60) { // 1 second at 60fps
+        sparc.stuckRecoveryAttempts = (sparc.stuckRecoveryAttempts || 0) + 1;
+        
+        // If multiple recovery attempts fail, teleport to safety
+        if (sparc.stuckRecoveryAttempts > 3) {
+          console.log("Emergency sparx teleport after multiple recovery failures");
+          
+          // Find an original border
+          const originalBorders = Borders.filter(b => b.isOriginalBorder);
+          if (originalBorders.length > 0) {
+            const originalBorder = originalBorders[Math.floor(random(0, originalBorders.length))];
+            
+            if (originalBorder.w >= originalBorder.h) { // Horizontal
+              sparc.x = originalBorder.x - originalBorder.w/4; // Position away from edge
+              sparc.y = originalBorder.y;
+              sparc.velocity.x = sparcSpeed;
+              sparc.velocity.y = 0;
+            } else { // Vertical
+              sparc.x = originalBorder.x;
+              sparc.y = originalBorder.y - originalBorder.h/4; // Position away from edge
+              sparc.velocity.x = 0;
+              sparc.velocity.y = sparcSpeed;
+            }
+          } else {
+            // Fallback to a specific position if no original borders found
+            sparc.x = gameField.x - gameField.w/2 + 20;
+            sparc.y = gameField.y - gameField.h/2 + 20;
+            sparc.velocity.x = sparcSpeed;
+            sparc.velocity.y = 0;
+          }
+          
+          sparc.stuckTime = 0;
+          sparc.stuckRecoveryAttempts = 0;
+          sparc.isHandlingCorner = false;
+          return;
+        }
+        
+        // Try to recover by finding another border
+        findAndMoveToNearestBorder(sparc);
+        sparc.stuckTime = 0;
+      }
     }
-  }
-  
-  // If not on any border, find the nearest border and move towards it
-  if (!currentBorder) {
+    
+    // Find current border
+    let currentBorder = null;
+    for (let border of Borders) {
+      if (isOnBorder(sparc, border, 5)) {
+        currentBorder = border;
+        break;
+      }
+    }
+    
+    // If not on any border, find the nearest one
+    if (!currentBorder) {
+      findAndMoveToNearestBorder(sparc);
+      return;
+    }
+    
+    // Check if at a corner/junction
+    const isAtCorner = isAtBorderCorner(sparc, 10); // Increased tolerance at corners
+    
+    // Handle corner turns
+    if (isAtCorner && !sparc.isHandlingCorner) {
+      handleCornerTurn(sparc, currentBorder);
+    }
+    // Continue along current border
+    else if (!isAtCorner) {
+      sparc.isHandlingCorner = false;
+      continueAlongBorder(sparc, currentBorder);
+    }
+  } catch (error) {
+    console.error("Error in updateSparc:", error);
+    // Emergency recovery from error
     findAndMoveToNearestBorder(sparc);
-    return;
   }
-  
-  // Check if we're near a corner/junction
-  const isAtCorner = isAtBorderCorner(sparc, 8);
-  
-  // Handle corner turns
-  if (isAtCorner && !sparc.isHandlingCorner) {
-    handleCornerTurn(sparc, currentBorder);
-  }
-  // Continue moving along the current border
-  else if (!isAtCorner) {
-    sparc.isHandlingCorner = false; // Reset corner handling flag
-    continueAlongBorder(sparc, currentBorder);
-  }
-
-  // Speed limiting code stays the same...
 }
 // Find the nearest border and move the sparc towards it
 function findAndMoveToNearestBorder(sparc) {
   let nearestPoint = null;
   let minDist = Infinity;
+  let nearestBorder = null;
   
   for (let border of Borders) {
     let point;
@@ -902,18 +926,28 @@ function findAndMoveToNearestBorder(sparc) {
     if (d < minDist) {
       minDist = d;
       nearestPoint = point;
+      nearestBorder = border;
     }
   }
   
   // Move towards the nearest point
   if (nearestPoint) {
-    // If very far from any border, snap directly to it
-    if (minDist > 20) {
+    // Teleport if very far from any border to prevent getting stuck
+    if (minDist > 30) {
       sparc.x = nearestPoint.x;
       sparc.y = nearestPoint.y;
+      
       // Set initial velocity along the border
       sparc.velocity.x = sparc.velocity.y = 0;
-      sparc.velocity.x = sparcSpeed; // Default direction
+      
+      // Determine direction based on border orientation
+      if (nearestBorder.w >= nearestBorder.h) {
+        // For horizontal borders
+        sparc.velocity.x = sparcSpeed; // Default to moving right
+      } else {
+        // For vertical borders
+        sparc.velocity.y = sparcSpeed; // Default to moving down
+      }
     } else {
       // Otherwise move towards it
       const dx = nearestPoint.x - sparc.x;
@@ -925,27 +959,24 @@ function findAndMoveToNearestBorder(sparc) {
         sparc.velocity.y = (dy/mag) * sparcSpeed;
       }
     }
+  } else {
+    // Emergency reset if no nearest point found
+    console.log("No nearest border found - emergency reset");
+    sparc.x = gameField.x - gameField.w/2; // Left border
+    sparc.y = gameField.y - gameField.h/2; // Top border
+    sparc.velocity.x = sparcSpeed;
+    sparc.velocity.y = 0;
   }
 }
 // Check if a sprite is at a corner/junction
 function isAtBorderCorner(sparc, tolerance = 8) {
-  // Get all border endpoints
-  let allEndpoints = [];
+  // Get all potential corner points
+  const corners = getAllBorderCorners();
   
-  for (let border of Borders) {
-    if (border.w >= border.h) { // Horizontal border
-      allEndpoints.push({x: border.x - border.w/2, y: border.y});
-      allEndpoints.push({x: border.x + border.w/2, y: border.y});
-    } else { // Vertical border
-      allEndpoints.push({x: border.x, y: border.y - border.h/2});
-      allEndpoints.push({x: border.x, y: border.y + border.h/2});
-    }
-  }
-  
-  // Check if we're close enough to any endpoint
-  for (let point of allEndpoints) {
-    if (dist(sparc.x, sparc.y, point.x, point.y) < tolerance) {
-      sparc.cornerPoint = point; // Store the corner point
+  // Check if the sparc is near any corner
+  for (let corner of corners) {
+    if (dist(sparc.x, sparc.y, corner.x, corner.y) < tolerance) {
+      sparc.cornerPoint = corner;
       return true;
     }
   }
@@ -954,95 +985,95 @@ function isAtBorderCorner(sparc, tolerance = 8) {
 }
 // Handle turns at corners
 function handleCornerTurn(sparc, currentBorder) {
-  sparc.isHandlingCorner = true; // Set flag to prevent multiple turns
+  // Set handling flag to prevent multiple turns
+  sparc.isHandlingCorner = true;
   
   // Get corner point
   const corner = sparc.cornerPoint;
+  if (!corner) {
+    sparc.isHandlingCorner = false;
+    return;
+  }
   
-  // Snap to corner precisely
+  // Ensure sparc is exactly at the corner
   sparc.x = corner.x;
   sparc.y = corner.y;
   
-  // Find all borders connected to this corner
-  let connectedBorders = [];
-  for (let border of Borders) {
-    if (border === currentBorder) continue; // Skip current border
-    
-    // Check if this border connects to our corner
-    let endpoints = [];
-    if (border.w >= border.h) { // Horizontal
-      endpoints.push({x: border.x - border.w/2, y: border.y});
-      endpoints.push({x: border.x + border.w/2, y: border.y});
-    } else { // Vertical
-      endpoints.push({x: border.x, y: border.y - border.h/2});
-      endpoints.push({x: border.x, y: border.y + border.h/2});
-    }
-    
-    for (let ep of endpoints) {
-      if (dist(ep.x, ep.y, corner.x, corner.y) < 5) {
-        connectedBorders.push({
-          border: border,
-          isEntryPoint: true
-        });
-        break;
-      }
-    }
-  }
+  // Find all borders that connect at this corner
+  const connectedBorders = findConnectedBorders(corner, currentBorder);
   
-  // Choose a connected border that's different from current
+  // Debug output
+  console.log(`Corner at (${corner.x.toFixed(1)}, ${corner.y.toFixed(1)}), found ${connectedBorders.length} connected borders`);
+  
+  // If we found connected borders, choose one to follow
   if (connectedBorders.length > 0) {
     // Determine previous direction
     const prevDirX = Math.sign(sparc.velocity.x);
     const prevDirY = Math.sign(sparc.velocity.y);
     
     // Filter out borders that would cause reversing direction
-    let validBorders = connectedBorders.filter(b => {
-      const border = b.border;
-      
-      // For current horizontal border, avoid connected borders going opposite horizontal direction
+    const validBorders = connectedBorders.filter(border => {
+      // For current horizontal border, avoid connected horizontals going opposite direction
       if (currentBorder.w >= currentBorder.h && border.w >= border.h) {
-        const newDirX = border.x > currentBorder.x ? 1 : -1;
-        return newDirX !== -prevDirX;
+        // Check if new direction would be opposite
+        if ((prevDirX > 0 && border.x < corner.x) || (prevDirX < 0 && border.x > corner.x)) {
+          return false;
+        }
       }
-      // For current vertical border, avoid connected borders going opposite vertical direction
+      // For current vertical border, avoid connected verticals going opposite direction
       else if (currentBorder.w < currentBorder.h && border.w < border.h) {
-        const newDirY = border.y > currentBorder.y ? 1 : -1;
-        return newDirY !== -prevDirY;
+        // Check if new direction would be opposite
+        if ((prevDirY > 0 && border.y < corner.y) || (prevDirY < 0 && border.y > corner.y)) {
+          return false;
+        }
       }
-      
-      return true; // Allow perpendicular turns
+      return true;
     });
     
-    // If no valid borders (would cause reversal), allow any connected border
-    if (validBorders.length === 0) validBorders = connectedBorders;
+    // Use all connected borders if no valid ones (prefer some movement over none)
+    const borderPool = validBorders.length > 0 ? validBorders : connectedBorders;
     
-    // Choose a random valid border
-    const chosenBorder = random(validBorders).border;
+    // Choose a random border
+    const chosenBorder = random(borderPool);
     
     // Set velocity based on new border orientation
-    if (chosenBorder.w >= chosenBorder.h) { // Horizontal border
+    if (chosenBorder.w >= chosenBorder.h) { // Horizontal
       sparc.velocity.y = 0;
-      // Determine if we should go left or right
-      if (Math.abs(corner.x - (chosenBorder.x - chosenBorder.w/2)) < 5) {
-        sparc.velocity.x = sparcSpeed; // Go right
+      
+      // Determine direction based on corner and border positions
+      if (corner.x <= chosenBorder.x - chosenBorder.w/2 + 5) {
+        sparc.velocity.x = sparcSpeed; // Go right from left edge
+      } else if (corner.x >= chosenBorder.x + chosenBorder.w/2 - 5) {
+        sparc.velocity.x = -sparcSpeed; // Go left from right edge
       } else {
-        sparc.velocity.x = -sparcSpeed; // Go left
+        // In the middle of the border, choose based on previous movement or randomly
+        sparc.velocity.x = prevDirX !== 0 ? sparcSpeed * prevDirX : (random() > 0.5 ? sparcSpeed : -sparcSpeed);
       }
-    } else { // Vertical border
+    } else { // Vertical
       sparc.velocity.x = 0;
-      // Determine if we should go up or down
-      if (Math.abs(corner.y - (chosenBorder.y - chosenBorder.h/2)) < 5) {
-        sparc.velocity.y = sparcSpeed; // Go down
+      
+      // Determine direction based on corner and border positions
+      if (corner.y <= chosenBorder.y - chosenBorder.h/2 + 5) {
+        sparc.velocity.y = sparcSpeed; // Go down from top edge
+      } else if (corner.y >= chosenBorder.y + chosenBorder.h/2 - 5) {
+        sparc.velocity.y = -sparcSpeed; // Go up from bottom edge
       } else {
-        sparc.velocity.y = -sparcSpeed; // Go up
+        // In the middle of the border, choose based on previous movement or randomly
+        sparc.velocity.y = prevDirY !== 0 ? sparcSpeed * prevDirY : (random() > 0.5 ? sparcSpeed : -sparcSpeed);
       }
     }
     
-    // Reset the corner handling flag after a delay
-    setTimeout(() => {
-      sparc.isHandlingCorner = false;
-    }, 300);
+    console.log(`Sparc at corner choosing ${chosenBorder.w >= chosenBorder.h ? 'horizontal' : 'vertical'} border, velocity: (${sparc.velocity.x}, ${sparc.velocity.y})`);
+  } else {
+    // No valid connected borders, try to recover
+    console.log("No connected borders found at corner, trying recovery");
+    findAndMoveToNearestBorder(sparc);
   }
+  
+  // Reset the corner handling flag after a delay
+  setTimeout(() => {
+    sparc.isHandlingCorner = false;
+  }, 300);
 }
 // Continue movement along the current border
 function continueAlongBorder(sparc, border) {
@@ -1060,7 +1091,39 @@ function continueAlongBorder(sparc, border) {
     // Check if we're about to go off the border
     if ((sparc.velocity.x > 0 && sparc.x > border.x + border.w/2 - 5) ||
         (sparc.velocity.x < 0 && sparc.x < border.x - border.w/2 + 5)) {
-      sparc.velocity.x *= -1; // Reverse direction
+      
+      // Before reversing direction, check if there's a connecting border at this end
+      const endPoint = (sparc.velocity.x > 0) ? 
+        { x: border.x + border.w/2, y: border.y } : 
+        { x: border.x - border.w/2, y: border.y };
+      
+      let foundConnection = false;
+      
+      // Look for vertical borders that connect at this endpoint
+      for (let otherBorder of Borders) {
+        if (otherBorder !== border && otherBorder.w < otherBorder.h) { // Vertical borders only
+          const topPoint = { x: otherBorder.x, y: otherBorder.y - otherBorder.h/2 };
+          const bottomPoint = { x: otherBorder.x, y: otherBorder.y + otherBorder.h/2 };
+          
+          // Check if either end of the vertical border is near our endpoint
+          if (dist(endPoint.x, endPoint.y, otherBorder.x, topPoint.y) < 8 ||
+              dist(endPoint.x, endPoint.y, otherBorder.x, bottomPoint.y) < 8) {
+            
+            // Found a connection! Update position and direction
+            sparc.x = otherBorder.x;
+            sparc.y = endPoint.y;
+            sparc.velocity.x = 0;
+            sparc.velocity.y = sparcSpeed * (random() > 0.5 ? 1 : -1); // Random direction
+            foundConnection = true;
+            break;
+          }
+        }
+      }
+      
+      // If no connection found, reverse direction
+      if (!foundConnection) {
+        sparc.velocity.x *= -1;
+      }
     }
   } 
   // For vertical borders
@@ -1077,11 +1140,42 @@ function continueAlongBorder(sparc, border) {
     // Check if we're about to go off the border
     if ((sparc.velocity.y > 0 && sparc.y > border.y + border.h/2 - 5) ||
         (sparc.velocity.y < 0 && sparc.y < border.y - border.h/2 + 5)) {
-      sparc.velocity.y *= -1; // Reverse direction
+      
+      // Before reversing direction, check if there's a connecting border
+      const endPoint = (sparc.velocity.y > 0) ? 
+        { x: border.x, y: border.y + border.h/2 } : 
+        { x: border.x, y: border.y - border.h/2 };
+      
+      let foundConnection = false;
+      
+      // Look for horizontal borders that connect at this endpoint
+      for (let otherBorder of Borders) {
+        if (otherBorder !== border && otherBorder.w >= otherBorder.h) { // Horizontal borders only
+          const leftPoint = { x: otherBorder.x - otherBorder.w/2, y: otherBorder.y };
+          const rightPoint = { x: otherBorder.x + otherBorder.w/2, y: otherBorder.y };
+          
+          // Check if either end of the horizontal border is near our endpoint
+          if (dist(endPoint.x, endPoint.y, leftPoint.x, otherBorder.y) < 8 ||
+              dist(endPoint.x, endPoint.y, rightPoint.x, otherBorder.y) < 8) {
+            
+            // Found a connection! Update position and direction
+            sparc.x = endPoint.x;
+            sparc.y = otherBorder.y;
+            sparc.velocity.x = sparcSpeed * (random() > 0.5 ? 1 : -1); // Random direction
+            sparc.velocity.y = 0;
+            foundConnection = true;
+            break;
+          }
+        }
+      }
+      
+      // If no connection found, reverse direction
+      if (!foundConnection) {
+        sparc.velocity.y *= -1;
+      }
     }
   }
 }
-
 //---PLAYER MOVEMENT------------------------------------------------------
 // Helper function to set direction and update speeds
 // In the setPlayerDirection function, change the speed values
@@ -1094,7 +1188,7 @@ function setPlayerDirection(direction) {
   
   // Set different speeds based on whether player is on border or not
   const borderSpeed = 3; // Speed when on border (keep as is)
-  const offBorderSpeed = 1.5; // Slower speed when off border (new)
+  const offBorderSpeed = 3; // Slower speed when off border (new)
   
   // Choose appropriate speed
   const moveSpeed = onBorder ? borderSpeed : offBorderSpeed;
@@ -1191,16 +1285,19 @@ function findLastTouchedBorder() {
 function findCurrentTouchedBorder() {
   return findLastTouchedBorder(); // Same logic but when returning to a border
 }
+
 function createTrailSegment(x, y) {
-  // If we're moving horizontally from the last point
-  if (lastTrailSegmentPos && Math.abs(y - lastTrailSegmentPos.y) < 20) {
-    // Force y coordinate to match the last segment
-    y = lastTrailSegmentPos.y;
-  }
-  // If we're moving vertically from the last point
-  else if (lastTrailSegmentPos && Math.abs(x - lastTrailSegmentPos.x) < 20) {
-    // Force x coordinate to match the last segment
-    x = lastTrailSegmentPos.x;
+  const alignmentTolerance = 5;
+  
+  if (lastTrailSegmentPos) {
+    // For horizontal movement - only snap when very close to horizontal
+    if (Math.abs(y - lastTrailSegmentPos.y) < alignmentTolerance) {
+      y = lastTrailSegmentPos.y; // Keep on the same horizontal line
+    }
+    // For vertical movement - only snap when very close to vertical
+    else if (Math.abs(x - lastTrailSegmentPos.x) < alignmentTolerance) {
+      x = lastTrailSegmentPos.x; // Keep on the same vertical line
+    }
   }
   
   let segment = new trails.Sprite();
@@ -1236,15 +1333,19 @@ function attemptAreaClosure(currentBorder) {
     
     console.log("Created polygon with", vertices.length, "vertices");
     
+    // Simplify the polygon to remove duplicate or nearly duplicate points
+    const simplifiedVertices = simplifyPolygon(vertices, 3); // 3px tolerance
+    
     // Fill the claimed area and get back the area percentage
-    const areaPercentage = fillClaimedArea(vertices);
+    const areaPercentage = fillClaimedArea(simplifiedVertices);
     
     if (areaPercentage) {
       // Update game state
       claimedArea += areaPercentage;
+      
+      // Make sure we show a whole number for the score (multiply by lives for scoring multiplier)
       score += Math.floor(areaPercentage * 100 * lives);
       
-      // Visual feedback
       flashGameField();
     }
     
@@ -1318,65 +1419,11 @@ function convertTrailsToBorders() {
           const cornerX = seg2.x;
           const cornerY = seg1.y;
           
-          // First segment (horizontal)
-          let horizBorder = new Borders.Sprite();
-          horizBorder.y = Math.round(seg1.y);
-          horizBorder.x = (seg1.x + cornerX) / 2;
-          horizBorder.w = Math.abs(cornerX - seg1.x);
-          horizBorder.h = 3;
-          horizBorder.color = "#FF0000"; // RED for debugging
-          horizBorder.collider = 'k';
-          
-          createdBorders.push({
-            type: "diagonal-h",
-            x: horizBorder.x,
-            y: horizBorder.y,
-            w: horizBorder.w,
-            h: horizBorder.h
-          });
-          
-          // Second segment (vertical)
-          let vertBorder = new Borders.Sprite();
-          vertBorder.x = Math.round(seg2.x);
-          vertBorder.y = (cornerY + seg2.y) / 2;
-          vertBorder.w = 3;
-          vertBorder.h = Math.abs(seg2.y - cornerY);
-          vertBorder.color = "#0000FF"; // BLUE for debugging
-          vertBorder.collider = 'k';
-          
-          console.log(`  Vert part: x=${vertBorder.x}, y=${vertBorder.y.toFixed(2)}, w=${vertBorder.w}, h=${vertBorder.h.toFixed(2)}`);
-          createdBorders.push({
-            type: "diagonal-v",
-            x: vertBorder.x,
-            y: vertBorder.y,
-            w: vertBorder.w,
-            h: vertBorder.h
-          });
-          
-          // Add a small square exactly at the corner to ensure connection
-          let cornerBorder = new Borders.Sprite();
-          cornerBorder.x = cornerX;
-          cornerBorder.y = cornerY;
-          cornerBorder.w = 3;
-          cornerBorder.h = 3;
-          cornerBorder.color = "#00FF00"; // GREEN for debugging
-          cornerBorder.collider = 'k';
-          console.log(`  Corner piece: x=${cornerBorder.x}, y=${cornerBorder.y}`);
         }
       } else {
         console.log(`  Distance too large (${distance.toFixed(2)} > ${trailSegmentDistance * 1.5}), skipping`);
       }
-    }
-    
-    console.log(`Created ${createdBorders.length} border segments`);
-    
-    // Debug: Visualize all borders
-    console.log("=== ALL BORDERS AFTER CREATION ===");
-    for (let i = 0; i < Borders.length; i++) {
-      const b = Borders[i];
-      console.log(`Border ${i}: x=${b.x.toFixed(1)}, y=${b.y.toFixed(1)}, w=${b.w.toFixed(1)}, h=${b.h.toFixed(1)}`);
-    }
-    
+    } 
     // Handle sparx AFTER all borders are created
     for (let sparc of sparx) {
       sparc.isHandlingCorner = false;
@@ -1416,27 +1463,57 @@ function findBorderIntersection() {
   // Find which border the player was last on
   let closestBorder = null;
   let minDistance = Infinity;
+  let exactPoint = null;
   
   for (let border of Borders) {
+    let distance, point;
+    
     // For horizontal borders
     if (border.w >= border.h) {
-      const distance = Math.abs(player.y - border.y);
-      if (distance < minDistance) {
+      distance = Math.abs(player.y - border.y);
+      
+      if (distance < minDistance && 
+          player.x >= border.x - border.w/2 - 5 && 
+          player.x <= border.x + border.w/2 + 5) {
+        
         minDistance = distance;
         closestBorder = border;
+        
+        // Calculate exact intersection
+        point = createVector(
+          Math.max(Math.min(player.x, border.x + border.w/2), border.x - border.w/2),
+          border.y
+        );
+        exactPoint = point;
       }
     } 
     // For vertical borders
     else {
-      const distance = Math.abs(player.x - border.x);
-      if (distance < minDistance) {
+      distance = Math.abs(player.x - border.x);
+      
+      if (distance < minDistance &&
+          player.y >= border.y - border.h/2 - 5 && 
+          player.y <= border.y + border.h/2 + 5) {
+        
         minDistance = distance;
         closestBorder = border;
+        
+        // Calculate exact intersection
+        point = createVector(
+          border.x,
+          Math.max(Math.min(player.y, border.y + border.h/2), border.y - border.h/2)
+        );
+        exactPoint = point;
       }
     }
   }
   
-  // Calculate the exact intersection point
+  // If we found an exact intersection point, use it
+  if (exactPoint) {
+    return exactPoint;
+  }
+  
+  // Otherwise use a more general approach
   if (closestBorder) {
     if (closestBorder.w >= closestBorder.h) {
       // Horizontal border - x from player, y from border
@@ -1451,175 +1528,7 @@ function findBorderIntersection() {
   return createVector(player.x, player.y);
 }
 
-function debugVisualizeTrails() {
-  // First add a console log to confirm this is running
-  console.log("Debug visualization running, trail segments: " + currentTrail.length);
-  
-  // Draw a bright background shape to make sure this function is running
-  push();
-  noStroke();
-  fill(255, 255, 0, 50); // Semi-transparent yellow
-  rect(20, 20, 50, 50);
-  pop();
-  
-  // Make sure we have trail segments to visualize
-  if (currentTrail.length < 1) {
-    return;
-  }
-  
-  // Draw dots at each trail segment position
-  push();
-  noStroke();
-  fill(0, 0, 255); // Blue dots for segment positions
-  for (let i = 0; i < currentTrail.length; i++) {
-    if (currentTrail[i]) {
-      ellipse(currentTrail[i].x, currentTrail[i].y, 6, 6);
-      
-      // Add text labels to see the segment order
-      fill(255);
-      textSize(10);
-      text(i, currentTrail[i].x + 8, currentTrail[i].y);
-    }
-  }
-  pop();
-  
-  // Draw connecting lines between segments
-  push();
-  stroke(255, 0, 0); // Red lines
-  strokeWeight(2); // Make them thicker
-  
-  for (let i = 0; i < currentTrail.length - 1; i++) {
-    if (currentTrail[i] && currentTrail[i+1]) {
-      // Draw line between segments
-      line(
-        currentTrail[i].x, 
-        currentTrail[i].y, 
-        currentTrail[i+1].x, 
-        currentTrail[i+1].y
-      );
-      
-      // Calculate distance
-      const segDist = dist(
-        currentTrail[i].x, 
-        currentTrail[i].y, 
-        currentTrail[i+1].x, 
-        currentTrail[i+1].y
-      );
-      
-      // If gap is large, highlight it
-      if (segDist > trails.diameter) {
-        // Draw a highlighted circle at midpoint
-        fill(255, 0, 0, 150);
-        const midX = (currentTrail[i].x + currentTrail[i+1].x) / 2;
-        const midY = (currentTrail[i].y + currentTrail[i+1].y) / 2;
-        ellipse(midX, midY, 10, 10);
-        
-        // Label the gap distance
-        fill(255);
-        textSize(12);
-        text(Math.round(segDist), midX, midY - 10);
-      }
-    }
-  }
-  pop();
-  
-  // Also visualize the player and trail start point
-  push();
-  // Show player
-  noFill();
-  stroke(0, 255, 0);
-  strokeWeight(2);
-  ellipse(player.x, player.y, player.diameter + 5, player.diameter + 5);
-  
-  // Show trail start point if it exists
-  if (trailStartPoint) {
-    fill(255, 165, 0); // Orange
-    noStroke();
-    ellipse(trailStartPoint.x, trailStartPoint.y, 10, 10);
-    fill(255);
-    text("Start", trailStartPoint.x + 10, trailStartPoint.y);
-  }
-  pop();
-}
 
-
-// Calculate a better area percentage
-function calculateBetterArea() {
-  // Convert the trail to a polygon
-  const polygon = trailToPolygon();
-  
-  if (!polygon || polygon.length < 3) {
-    return 0; // Not a valid polygon
-  }
-  
-  // Calculate area using shoelace formula
-  const claimedAreaSize = calculatePolygonArea(polygon);
-  
-  // Calculate game field area
-  const fieldArea = gameField.w * gameField.h;
-  
-  // Calculate percentage, capped at a reasonable value to prevent exploits
-  let percentage = (claimedAreaSize / fieldArea) * 100;
-  
-  // Apply reasonableness checks
-  percentage = Math.min(percentage, 30); // Cap at 30% per claim
-  percentage = Math.max(percentage, 0.5); // Minimum of 0.5% per valid claim
-  
-  return percentage;
-}
-
-// Create optimized border segments from the trail
-function createOptimizedBorders() {
-  // Simplify by creating border segments that follow the trail
-  
-  // First, ensure the trail forms a closed loop
-  if (currentTrail.length > 1 && trailStartPoint) {
-    // Create borders along the path
-    for (let i = 0; i < currentTrail.length - 1; i++) {
-      const seg1 = currentTrail[i];
-      const seg2 = currentTrail[i + 1];
-      
-      // Create a border between these points
-      let newBorder = new Borders.Sprite();
-      
-      // For horizontal movement
-      if (Math.abs(seg1.y - seg2.y) < 5) {
-        newBorder.y = seg1.y;
-        newBorder.x = (seg1.x + seg2.x) / 2;
-        newBorder.w = Math.abs(seg2.x - seg1.x) + 2; // Add 2 to ensure overlap
-        newBorder.h = 2;  // Thicker for better visibility
-      } 
-      // For vertical movement
-      else {
-        newBorder.x = seg1.x;
-        newBorder.y = (seg1.y + seg2.y) / 2;
-        newBorder.w = 2;  // Thicker for better visibility
-        newBorder.h = Math.abs(seg2.y - seg1.y) + 2; // Add 2 to ensure overlap
-      }
-    }
-    
-    // Close the loop by connecting back to start point
-    const firstSeg = currentTrail[0];
-    const lastSeg = currentTrail[currentTrail.length - 1];
-    
-    // Create border from last segment to first
-    let closingBorder = new Borders.Sprite();
-    
-    if (Math.abs(firstSeg.y - lastSeg.y) < 5) {
-      // Horizontal closing border
-      closingBorder.y = lastSeg.y;
-      closingBorder.x = (lastSeg.x + firstSeg.x) / 2;
-      closingBorder.w = Math.abs(firstSeg.x - lastSeg.x) + 2;
-      closingBorder.h = 2;
-    } else {
-      // Vertical closing border
-      closingBorder.x = lastSeg.x;
-      closingBorder.y = (lastSeg.y + firstSeg.y) / 2;
-      closingBorder.w = 2;
-      closingBorder.h = Math.abs(firstSeg.y - lastSeg.y) + 2;
-    }
-  }
-}
 // Clear trail segments properly
 function clearTrailSegments() {
   // Log before cleaning up to help with debugging
@@ -1646,19 +1555,6 @@ function flashGameField() {
   setTimeout(() => {
     gameField.color = originalColor;
   }, 200);
-}
-
-// Improved polygon area calculation using the shoelace formula
-function calculatePolygonArea(vertices) {
-  let area = 0;
-  let j = vertices.length - 1;
-  
-  for (let i = 0; i < vertices.length; i++) {
-    area += (vertices[j].x + vertices[i].x) * (vertices[j].y - vertices[i].y);
-    j = i;
-  }
-  
-  return Math.abs(area / 2);
 }
 
 // Convert the current trail into a proper polygon for area calculation
@@ -1806,7 +1702,7 @@ function findBorderPath(startPoint, endPoint) {
 }
 
 // Helper to check if a point is on a border
-function isPointOnBorder(point, border, tolerance = 5) {
+function isPointOnBorder(point, border, tolerance = 3) {
   // For horizontal borders (wider than tall)
   if (border.w >= border.h) {
     return Math.abs(point.y - border.y) < tolerance && 
@@ -1845,62 +1741,6 @@ function determineClaimedSide(polygon) {
   return "smaller";
 }
 
-// The shoelace formula for calculating polygon area
-function calculatePolygonArea(vertices) {
-  let area = 0;
-  let j = vertices.length - 1;
-  
-  for (let i = 0; i < vertices.length; i++) {
-    area += (vertices[j].x + vertices[i].x) * (vertices[j].y - vertices[i].y);
-    j = i;
-  }
-  
-  return Math.abs(area / 2);
-}
-
-// Check if a point is inside a polygon using ray casting algorithm
-function isPointInPolygon(point, polygon) {
-  if (!polygon || polygon.length < 3) return false;
-  
-  // First check: is point exactly on any edge?
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const xi = polygon[i].x, yi = polygon[i].y;
-    const xj = polygon[j].x, yj = polygon[j].y;
-    
-    // Check if point is exactly on an edge (with small tolerance)
-    const tolerance = 0.1;
-    
-    // For horizontal edges
-    if (Math.abs(yi - yj) < tolerance && 
-        Math.abs(point.y - yi) < tolerance &&
-        point.x >= Math.min(xi, xj) - tolerance && 
-        point.x <= Math.max(xi, xj) + tolerance) {
-      return true; // Point is on a horizontal edge
-    }
-    
-    // For vertical edges
-    if (Math.abs(xi - xj) < tolerance && 
-        Math.abs(point.x - xi) < tolerance &&
-        point.y >= Math.min(yi, yj) - tolerance && 
-        point.y <= Math.max(yi, yj) + tolerance) {
-      return true; // Point is on a vertical edge
-    }
-  }
-  
-  // Standard ray-casting algorithm for points not on edges
-  let inside = false;
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const xi = polygon[i].x, yi = polygon[i].y;
-    const xj = polygon[j].x, yj = polygon[j].y;
-    
-    const intersect = ((yi > point.y) !== (yj > point.y)) &&
-        (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
-    
-    if (intersect) inside = !inside;
-  }
-  
-  return inside;
-}
 // Create a visual representation of the claimed area using the actual polygon
 function createAreaFill(polygon) {
   if (!polygon || polygon.length < 3) {
@@ -1977,19 +1817,75 @@ function createBordersFromPolygon(polygon) {
   if (!polygon || polygon.length < 3) return;
   
   try {
-    console.log("Creating borders for polygon with", polygon.length, "vertices");
+    console.log("Creating clean borders for polygon with", polygon.length, "vertices");
+    
+    // First, remove any trail segments that are now inside the polygon
+    for (let segment of currentTrail) {
+      if (segment) {
+        segment.remove();
+      }
+    }
+    currentTrail = [];
+    
+    // Get game field boundaries
+    const leftBoundary = gameField.x - gameField.w/2; 
+    const rightBoundary = gameField.x + gameField.w/2;
+    const topBoundary = gameField.y - gameField.h/2;
+    const bottomBoundary = gameField.y + gameField.h/2;
     
     // Ensure the polygon is closed
     const firstVertex = polygon[0];
     const lastVertex = polygon[polygon.length - 1];
     
-    // Add the first vertex again if needed to close the loop
     if (firstVertex.x !== lastVertex.x || firstVertex.y !== lastVertex.y) {
       polygon.push({x: firstVertex.x, y: firstVertex.y});
     }
     
-    // Create borders with small overlap to ensure no gaps
+    // IMPORTANT: Better snapping to original borders
+    // Adjust vertices to snap exactly to original borders
+    for (let i = 0; i < polygon.length; i++) {
+      // Snap to left/right borders
+      if (Math.abs(polygon[i].x - leftBoundary) < 5) {
+        polygon[i].x = leftBoundary;
+      } else if (Math.abs(polygon[i].x - rightBoundary) < 5) {
+        polygon[i].x = rightBoundary;
+      }
+      
+      // Snap to top/bottom borders
+      if (Math.abs(polygon[i].y - topBoundary) < 5) {
+        polygon[i].y = topBoundary;
+      } else if (Math.abs(polygon[i].y - bottomBoundary) < 5) {
+        polygon[i].y = bottomBoundary;
+      }
+    }
+    
+    // Check if this is a border-connected polygon
+    let skipEdges = [];
+    
     for (let i = 0; i < polygon.length - 1; i++) {
+      const p1 = polygon[i];
+      const p2 = polygon[i + 1];
+      
+      // Check if this segment is on an existing border
+      for (let border of Borders) {
+        if ((isPointOnBorder(p1, border, 3) && isPointOnBorder(p2, border, 3)) ||
+            (Math.abs(p1.x - p2.x) < 3 && Math.abs(p1.x - leftBoundary) < 3) ||
+            (Math.abs(p1.x - p2.x) < 3 && Math.abs(p1.x - rightBoundary) < 3) ||
+            (Math.abs(p1.y - p2.y) < 3 && Math.abs(p1.y - topBoundary) < 3) ||
+            (Math.abs(p1.y - p2.y) < 3 && Math.abs(p1.y - bottomBoundary) < 3)) {
+          skipEdges.push(i);
+          break;
+        }
+      }
+    }
+    
+    // Create borders with perfect alignment to the fill area
+    let newBorders = [];
+    
+    for (let i = 0; i < polygon.length - 1; i++) {
+      // Skip if this edge is on an existing border
+      if (skipEdges.includes(i)) continue;
+      
       const p1 = polygon[i];
       const p2 = polygon[i + 1];
       
@@ -2002,6 +1898,8 @@ function createBordersFromPolygon(polygon) {
         newBorder.h = 3; // Thicker for visibility
         newBorder.color = "#000000";
         newBorder.collider = 'k';
+        newBorder.newBorder = true; // Mark as a new border
+        newBorders.push(newBorder);
       } 
       // For vertical or near-vertical segments
       else if (Math.abs(p1.x - p2.x) <= 2) {
@@ -2012,6 +1910,8 @@ function createBordersFromPolygon(polygon) {
         newBorder.h = Math.abs(p2.y - p1.y) + 1; // +1 to ensure overlap
         newBorder.color = "#000000";
         newBorder.collider = 'k';
+        newBorder.newBorder = true; // Mark as a new border
+        newBorders.push(newBorder);
       }
       // For diagonal segments, break into horizontal and vertical parts
       else {
@@ -2023,32 +1923,104 @@ function createBordersFromPolygon(polygon) {
         let horizBorder = new Borders.Sprite();
         horizBorder.y = p1.y;
         horizBorder.x = (p1.x + midX) / 2;
-        horizBorder.w = Math.abs(midX - p1.x) + 1;
+        horizBorder.w = Math.abs(midX - p1.x) + 1; // Add 1 to ensure overlap
         horizBorder.h = 3;
         horizBorder.color = "#000000";
         horizBorder.collider = 'k';
+        horizBorder.newBorder = true; // Mark as a new border
+        newBorders.push(horizBorder);
         
         // 2. Vertical segment (from intermediate point to p2)
         let vertBorder = new Borders.Sprite();
         vertBorder.x = p2.x;
         vertBorder.y = (midY + p2.y) / 2;
         vertBorder.w = 3;
-        vertBorder.h = Math.abs(p2.y - midY) + 1;
+        vertBorder.h = Math.abs(p2.y - midY) + 1; // Add 1 to ensure overlap
         vertBorder.color = "#000000";
         vertBorder.collider = 'k';
+        vertBorder.newBorder = true; // Mark as a new border
+        newBorders.push(vertBorder);
       }
     }
     
-    // Update sparx enemies after adding new borders
-    for (let sparc of sparx) {
-      // If sparc is not on any border, move it to the nearest one
-      if (!isSparcOnBorder(sparc)) {
-        findAndMoveToNearestBorder(sparc);
-      }
-    }
+    // Special handling for junctions
+    createJunctionConnections(newBorders);
+    
+    // After creating all new borders, force sparx to adjust
+    setTimeout(() => {
+      repositionAllSparx();
+    }, 100);
     
   } catch (error) {
     console.error("Error creating borders from polygon:", error);
+  }
+}
+
+// New function to ensure junctions are properly connected
+function createJunctionConnections(newBorders) {
+  // Get all original borders
+  const originalBorders = Borders.filter(b => b.isOriginalBorder);
+  
+  // For each new border, check if it nearly touches an original border
+  for (let newBorder of newBorders) {
+    for (let origBorder of originalBorders) {
+      // Skip if orientations don't allow for a junction (both horizontal or both vertical)
+      if ((newBorder.w >= newBorder.h && origBorder.w >= origBorder.h) ||
+          (newBorder.w < newBorder.h && origBorder.w < origBorder.h)) {
+        continue;
+      }
+      
+      // Get endpoints of new border
+      let newBorderPoints = [];
+      if (newBorder.w >= newBorder.h) { // Horizontal
+        newBorderPoints.push({x: newBorder.x - newBorder.w/2, y: newBorder.y});
+        newBorderPoints.push({x: newBorder.x + newBorder.w/2, y: newBorder.y});
+      } else { // Vertical
+        newBorderPoints.push({x: newBorder.x, y: newBorder.y - newBorder.h/2});
+        newBorderPoints.push({x: newBorder.x, y: newBorder.y + newBorder.h/2});
+      }
+      
+      // Get endpoints of original border
+      let origBorderPoints = [];
+      if (origBorder.w >= origBorder.h) { // Horizontal
+        origBorderPoints.push({x: origBorder.x - origBorder.w/2, y: origBorder.y});
+        origBorderPoints.push({x: origBorder.x + origBorder.w/2, y: origBorder.y});
+      } else { // Vertical
+        origBorderPoints.push({x: origBorder.x, y: origBorder.y - origBorder.h/2});
+        origBorderPoints.push({x: origBorder.x, y: origBorder.y + origBorder.h/2});
+      }
+      
+      // Check for near-intersections
+      for (let newPoint of newBorderPoints) {
+        for (let origPoint of origBorderPoints) {
+          const distance = dist(newPoint.x, newPoint.y, origPoint.x, origPoint.y);
+          
+          // If points are close but not exactly touching, create a connecting border
+          if (distance > 1 && distance < 10) {
+            // Create a small connecting border
+            let connector = new Borders.Sprite();
+            connector.x = (newPoint.x + origPoint.x) / 2;
+            connector.y = (newPoint.y + origPoint.y) / 2;
+            
+            if (Math.abs(newPoint.x - origPoint.x) > Math.abs(newPoint.y - origPoint.y)) {
+              // Horizontal connector
+              connector.w = distance + 1;
+              connector.h = 3;
+            } else {
+              // Vertical connector
+              connector.w = 3;
+              connector.h = distance + 1;
+            }
+            
+            connector.color = "#000000";
+            connector.collider = 'k';
+            connector.isConnector = true; // Mark as a connector border
+            
+            console.log(`Created junction connector between borders`);
+          }
+        }
+      }
+    }
   }
 }
 
@@ -2065,9 +2037,15 @@ function fillClaimedArea(polygon) {
   }
   
   try {
-    console.log("Creating claimed area with improved algorithm");
+    console.log("Creating claimed area with optimized rectangular fill");
     
-    // Calculate bounds for grid creation
+    // Identify if this polygon connects to a border
+    const isLeftBorderTouch = polygon.some(p => Math.abs(p.x - (gameField.x - gameField.w/2)) < 5);
+    const isRightBorderTouch = polygon.some(p => Math.abs(p.x - (gameField.x + gameField.w/2)) < 5);
+    const isTopBorderTouch = polygon.some(p => Math.abs(p.y - (gameField.y - gameField.h/2)) < 5);
+    const isBottomBorderTouch = polygon.some(p => Math.abs(p.y - (gameField.y + gameField.h/2)) < 5);
+    
+    // Calculate bounds of the polygon
     let minX = Infinity, minY = Infinity;
     let maxX = -Infinity, maxY = -Infinity;
     
@@ -2078,63 +2056,92 @@ function fillClaimedArea(polygon) {
       maxY = Math.max(maxY, vertex.y);
     }
     
-    // Use a smaller blockSize for more precise filling
-    const blockSize = 4; // Reduced from 8 to 4
+    // Get game field boundaries 
+    const leftBoundary = gameField.x - gameField.w/2;
+    const rightBoundary = gameField.x + gameField.w/2;
+    const topBoundary = gameField.y - gameField.h/2;
+    const bottomBoundary = gameField.y + gameField.h/2;
     
-    // Create a filled sprite group
-    const fillSprites = new Group();
-    fillSprites.collider = 'n';
-    fillSprites.layer = 1; // Behind game elements
-    
-    // Pick a random color from the palette
-    const fillColor = "#FF0000";
-    fillSprites.color = fillColor;
-    fillSprites.opacity = 0.9; // Slightly more opaque for better visibility
-    
-    // Check if any corner is in polygon, not just center
-    function anyPointInBlock(x, y, size, polygon) {
-      // Check center and four corners
-      return isPointInPolygon({x: x + size/2, y: y + size/2}, polygon) || // Center
-             isPointInPolygon({x, y}, polygon) || // Top-left
-             isPointInPolygon({x: x + size, y}, polygon) || // Top-right
-             isPointInPolygon({x, y: y + size}, polygon) || // Bottom-left
-             isPointInPolygon({x: x + size, y: y + size}, polygon); // Bottom-right
+    // Expand to exactly meet the borders
+    if (isLeftBorderTouch) {
+      minX = leftBoundary;
+    } else {
+      minX = Math.max(Math.floor(minX), leftBoundary);
     }
     
-    // Create a grid of fill blocks using improved detection
-    for (let x = Math.floor(minX); x <= Math.ceil(maxX); x += blockSize) {
-      for (let y = Math.floor(minY); y <= Math.ceil(maxY); y += blockSize) {
-        if (anyPointInBlock(x, y, blockSize, polygon)) {
-          let fillBlock = new fillSprites.Sprite();
-          fillBlock.x = x + blockSize/2;
-          fillBlock.y = y + blockSize/2;
-          fillBlock.w = blockSize;
-          fillBlock.h = blockSize;
-          fillBlock.strokeWeight = 0; // No border
-        }
-      }
+    if (isRightBorderTouch) {
+      maxX = rightBoundary;
+    } else {
+      maxX = Math.min(Math.ceil(maxX), rightBoundary);
     }
+    
+    if (isTopBorderTouch) {
+      minY = topBoundary;
+    } else {
+      minY = Math.max(Math.floor(minY), topBoundary);
+    }
+    
+    if (isBottomBorderTouch) {
+      maxY = bottomBoundary;
+    } else {
+      maxY = Math.min(Math.ceil(maxY), bottomBoundary);
+    }
+    
+    // Calculate width, height and center of the fill area
+    const width = maxX - minX;
+    const height = maxY - minY;
+    const centerX = minX + width/2;
+    const centerY = minY + height/2;
+    
+    // Skip if dimensions are too small
+    if (width < 2 || height < 2) {
+      console.log("Area too small, skipping fill");
+      return false;
+    }
+    
+    // Create fill sprite
+    const fillSprite = new Sprite();
+    fillSprite.x = centerX;
+    fillSprite.y = centerY;
+    
+    // Set dimensions - ensure no gaps by adding 0.5 pixels to overlap with borders
+    fillSprite.w = width + 0.5;
+    fillSprite.h = height + 0.5;
+    
+    // Use a different color than the game field to ensure visibility
+    let fillColor;
+    do {
+      fillColor = "#FF0000";
+    } while (fillColor === gameField.color);
+    
+    fillSprite.color = fillColor;
+    fillSprite.opacity = 0.75; // Semi-transparent
+    fillSprite.layer = 1; // Lowest layer, behind everything
+    fillSprite.collider = 'n'; // No collision
     
     // Store for tracking
-    window.fillAreas = window.fillAreas || [];
-    window.fillAreas.push({
-      sprites: fillSprites,
-      polygon: polygon
-    });
+    window.claimedSprites = window.claimedSprites || [];
+    window.claimedSprites.push(fillSprite);
     
     // Create borders after the fill to ensure they're on top
     createBordersFromPolygon(polygon);
     
-    // Calculate and return the actual area percentage
-    let areaSize = calculatePolygonArea(polygon);
-    let fieldArea = gameField.w * gameField.h;
-    let areaPercentage = (areaSize / fieldArea) * 100;
+    // IMPORTANT: Better area percentage calculation
+    // Use the actual rectangle area instead of polygon area for more accuracy
+    const rectangleArea = width * height;
+    const fieldArea = gameField.w * gameField.h;
     
-    // Apply reasonable limits
-    areaPercentage = Math.min(areaPercentage, 30); // Cap at 30%
-    areaPercentage = Math.max(areaPercentage, 0.5); // Min 0.5%
+    // Calculate percentage of the field that was claimed
+    let areaPercentage = (rectangleArea / fieldArea) * 125;
     
+    // Remove caps for testing (or keep reasonable caps if you prefer)
+    // areaPercentage = Math.min(areaPercentage, 50); // Cap at 50% (adjust as needed)
+    // areaPercentage = Math.max(areaPercentage, 1); // Min 1% (adjust as needed)
+    
+    console.log(`Rectangle dimensions: ${width} x ${height}`);
+    console.log(`Rectangle area: ${rectangleArea}, Field area: ${fieldArea}`);
     console.log(`Area claimed: ${areaPercentage.toFixed(2)}%`);
+    
     return areaPercentage;
     
   } catch (error) {
@@ -2151,4 +2158,297 @@ function isSparcOnBorder(sparc, tolerance = 3) {
     }
   }
   return false;
+}
+
+function simplifyPolygon(vertices, tolerance) {
+  if (vertices.length <= 3) return vertices;
+  
+  let result = [vertices[0]];
+  
+  for (let i = 1; i < vertices.length; i++) {
+    const prev = result[result.length - 1];
+    const current = vertices[i];
+    
+    // Skip points that are too close to previous point
+    if (dist(prev.x, prev.y, current.x, current.y) <= tolerance) {
+      continue;
+    }
+    
+    // Special handling for points that are on same vertical/horizontal line
+    if (result.length > 1) {
+      const prevPrev = result[result.length - 2];
+      
+      // Check if three points are collinear (on same horizontal or vertical line)
+      if ((Math.abs(prev.y - prevPrev.y) < tolerance && Math.abs(current.y - prev.y) < tolerance) ||
+          (Math.abs(prev.x - prevPrev.x) < tolerance && Math.abs(current.x - prev.x) < tolerance)) {
+        // Replace middle point with current point
+        result.pop();
+      }
+    }
+    
+    result.push(current);
+  }
+  
+  // Ensure it's still a closed polygon
+  const first = result[0];
+  const last = result[result.length - 1];
+  
+  if (dist(first.x, first.y, last.x, last.y) > tolerance) {
+    result.push({x: first.x, y: first.y});
+  }
+  
+  return result;
+}
+
+function checkForStuckSparx() {
+  for (let sparc of sparx) {
+    // Check if sparc has been stuck in the same position
+    if (!sparc.lastX) {
+      sparc.lastX = sparc.x;
+      sparc.lastY = sparc.y;
+      sparc.stuckTime = 0;
+    } else {
+      // If position hasn't changed significantly
+      if (dist(sparc.x, sparc.y, sparc.lastX, sparc.lastY) < 1) {
+        sparc.stuckTime = (sparc.stuckTime || 0) + 1;
+        
+        // If stuck for too long (adjust threshold as needed)
+        if (sparc.stuckTime > 90) { // About 1.5 seconds at 60fps
+          console.log("Fixing stuck sparx");
+          findAndMoveToNearestBorder(sparc);
+          sparc.isHandlingCorner = false;
+          sparc.stuckTime = 0;
+        }
+      } else {
+        // Reset if moving normally
+        sparc.lastX = sparc.x;
+        sparc.lastY = sparc.y;
+        sparc.stuckTime = 0;
+      }
+    }
+  }
+}
+
+function repositionAllSparx() {
+  for (let sparc of sparx) {
+    // Reset sparc properties
+    sparc.isHandlingCorner = false;
+    sparc.cornerPoint = null;
+    sparc.stuckTime = 0;
+    
+    // Check if the sparc is on any border
+    let onAnyBorder = false;
+    let currentBorder = null;
+    
+    for (let border of Borders) {
+      if (isOnBorder(sparc, border, 5)) {
+        onAnyBorder = true;
+        currentBorder = border;
+        break;
+      }
+    }
+    
+    // If on a border, make sure velocity aligns with it
+    if (onAnyBorder && currentBorder) {
+      if (currentBorder.w >= currentBorder.h) { // Horizontal
+        sparc.y = currentBorder.y; // Snap to border
+        sparc.velocity.y = 0;
+        
+        // Set a consistent horizontal velocity
+        const movingRight = random() > 0.5;
+        sparc.velocity.x = movingRight ? sparcSpeed : -sparcSpeed;
+        
+        // Check if we're near an edge and fix direction to avoid immediate reversal
+        const leftEdge = currentBorder.x - currentBorder.w/2;
+        const rightEdge = currentBorder.x + currentBorder.w/2;
+        
+        if (sparc.x < leftEdge + 10 && sparc.velocity.x < 0) {
+          sparc.velocity.x = sparcSpeed; // Moving right if near left edge
+        } else if (sparc.x > rightEdge - 10 && sparc.velocity.x > 0) {
+          sparc.velocity.x = -sparcSpeed; // Moving left if near right edge
+        }
+      } else { // Vertical
+        sparc.x = currentBorder.x; // Snap to border
+        sparc.velocity.x = 0;
+        
+        // Set a consistent vertical velocity
+        const movingDown = random() > 0.5;
+        sparc.velocity.y = movingDown ? sparcSpeed : -sparcSpeed;
+        
+        // Check if we're near an edge and fix direction to avoid immediate reversal
+        const topEdge = currentBorder.y - currentBorder.h/2;
+        const bottomEdge = currentBorder.y + currentBorder.h/2;
+        
+        if (sparc.y < topEdge + 10 && sparc.velocity.y < 0) {
+          sparc.velocity.y = sparcSpeed; // Moving down if near top edge
+        } else if (sparc.y > bottomEdge - 10 && sparc.velocity.y > 0) {
+          sparc.velocity.y = -sparcSpeed; // Moving up if near bottom edge
+        }
+      }
+    } else {
+      // Not on any border, move to a safe one
+      const originalBorders = [Borders[0], Borders[1], Borders[2], Borders[3]];
+      const safeBorder = random(originalBorders);
+      
+      // Position near the middle of the safe border
+      if (safeBorder.w >= safeBorder.h) { // Horizontal
+        sparc.x = safeBorder.x;
+        sparc.y = safeBorder.y;
+        sparc.velocity.x = random() > 0.5 ? sparcSpeed : -sparcSpeed;
+        sparc.velocity.y = 0;
+      } else { // Vertical
+        sparc.x = safeBorder.x;
+        sparc.y = safeBorder.y;
+        sparc.velocity.x = 0;
+        sparc.velocity.y = random() > 0.5 ? sparcSpeed : -sparcSpeed;
+      }
+    }
+  }
+}
+
+function getAllBorderCorners() {
+  const corners = [];
+  
+  // First, get all border endpoints
+  for (let border of Borders) {
+    if (border.w >= border.h) { // Horizontal
+      corners.push({x: border.x - border.w/2, y: border.y});
+      corners.push({x: border.x + border.w/2, y: border.y});
+    } else { // Vertical
+      corners.push({x: border.x, y: border.y - border.h/2});
+      corners.push({x: border.x, y: border.y + border.h/2});
+    }
+  }
+  
+  // Then, find all intersections between borders
+  for (let i = 0; i < Borders.length; i++) {
+    for (let j = i + 1; j < Borders.length; j++) {
+      const border1 = Borders[i];
+      const border2 = Borders[j];
+      
+      // Only check perpendicular borders (horizontal + vertical)
+      if ((border1.w >= border1.h && border2.w < border2.h) || 
+          (border1.w < border1.h && border2.w >= border2.h)) {
+        const intersection = findBorderIntersectionPoint(border1, border2);
+        if (intersection) {
+          corners.push(intersection);
+        }
+      }
+    }
+  }
+  
+  // Deduplicate corners that are very close to each other
+  const uniqueCorners = [];
+  for (let i = 0; i < corners.length; i++) {
+    let isDuplicate = false;
+    for (let j = 0; j < uniqueCorners.length; j++) {
+      if (dist(corners[i].x, corners[i].y, uniqueCorners[j].x, uniqueCorners[j].y) < 5) {
+        isDuplicate = true;
+        break;
+      }
+    }
+    if (!isDuplicate) {
+      uniqueCorners.push(corners[i]);
+    }
+  }
+  
+  return uniqueCorners;
+}
+
+// Find the intersection point between two perpendicular borders
+function findBorderIntersectionPoint(border1, border2) {
+  // Ensure one is horizontal and one is vertical
+  let horizontal, vertical;
+  if (border1.w >= border1.h && border2.w < border2.h) {
+    horizontal = border1;
+    vertical = border2;
+  } else if (border1.w < border1.h && border2.w >= border2.h) {
+    horizontal = border2;
+    vertical = border1;
+  } else {
+    return null; // Not perpendicular
+  }
+  
+  // Check if borders actually intersect
+  const horizontalLeft = horizontal.x - horizontal.w/2;
+  const horizontalRight = horizontal.x + horizontal.w/2;
+  const verticalTop = vertical.y - vertical.h/2;
+  const verticalBottom = vertical.y + vertical.h/2;
+  
+  if (vertical.x >= horizontalLeft && vertical.x <= horizontalRight &&
+      horizontal.y >= verticalTop && horizontal.y <= verticalBottom) {
+    // Borders intersect, return the intersection point
+    return {x: vertical.x, y: horizontal.y};
+  }
+  
+  return null; // No intersection
+}
+
+function findConnectedBorders(corner, currentBorder) {
+  const connectedBorders = [];
+  
+  // Use a larger tolerance at junctions between new and original borders
+  let connectionTolerance = 8;
+  // If current border is original or we're connecting to original, increase tolerance
+  if (currentBorder && currentBorder.isOriginalBorder) {
+    connectionTolerance = 12; // More forgiving when involving original borders
+  }
+  
+  for (let border of Borders) {
+    // Skip the current border
+    if (border === currentBorder) continue;
+    
+    // Use even larger tolerance when connecting between original and new borders
+    let checkTolerance = connectionTolerance;
+    if ((currentBorder && currentBorder.isOriginalBorder && !border.isOriginalBorder) ||
+        (border.isOriginalBorder && currentBorder && !currentBorder.isOriginalBorder)) {
+      checkTolerance = 15; // Extra forgiveness at new-to-original junctions
+    }
+    
+    // Check if this border connects to the corner
+    if (border.w >= border.h) { // Horizontal border
+      const leftPoint = {x: border.x - border.w/2, y: border.y};
+      const rightPoint = {x: border.x + border.w/2, y: border.y};
+      
+      // Check if either end is close to the corner
+      if (dist(corner.x, corner.y, leftPoint.x, leftPoint.y) < checkTolerance ||
+          dist(corner.x, corner.y, rightPoint.x, rightPoint.y) < checkTolerance ||
+          (Math.abs(corner.y - border.y) < checkTolerance && 
+           corner.x >= leftPoint.x - checkTolerance && 
+           corner.x <= rightPoint.x + checkTolerance)) {
+        connectedBorders.push(border);
+      }
+    } else { // Vertical border
+      const topPoint = {x: border.x, y: border.y - border.h/2};
+      const bottomPoint = {x: border.x, y: border.y + border.h/2};
+      
+      // Check if either end is close to the corner
+      if (dist(corner.x, corner.y, topPoint.x, topPoint.y) < checkTolerance ||
+          dist(corner.x, corner.y, bottomPoint.x, bottomPoint.y) < checkTolerance ||
+          (Math.abs(corner.x - border.x) < checkTolerance && 
+           corner.y >= topPoint.y - checkTolerance && 
+           corner.y <= bottomPoint.y + checkTolerance)) {
+        connectedBorders.push(border);
+      }
+    }
+  }
+  
+  return connectedBorders;
+}
+
+function initOriginalBorders() {
+  // Mark the original borders specially
+  for (let i = 0; i < 4; i++) {
+    if (Borders[i]) {
+      Borders[i].isOriginalBorder = true;
+    }
+  }
+}
+
+function markOriginalBorders() {
+  for (let i = 0; i < 4; i++) {
+    if (Borders[i]) {
+      Borders[i].isOriginalBorder = true;
+    }
+  }
 }

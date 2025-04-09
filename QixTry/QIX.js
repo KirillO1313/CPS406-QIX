@@ -146,6 +146,9 @@ function setup() {
     for (let sparc of sparx) {
       sparc.isHandlingCorner = false;
       sparc.cornerPoint = null;
+      sparc.movementPattern = Math.floor(random(0, 3)); // 0, 1, or 2
+      sparc.patternSteps = 0;
+      sparc.patternDuration = Math.floor(random(50, 150));
     }
     sparx.layer = 5; // Higher layer than trails
 
@@ -187,7 +190,7 @@ function draw() {
   }
 }
 
-//---INTRO-----------------------------------------------------------------------
+//---GAME-------------------------------------------------------------------------
 function intro(){
   // Set a black background to clear any previous content
   background(0);
@@ -217,12 +220,11 @@ function intro(){
     gameState = runGame;
   }
 }
-
-//---GAME-------------------------------------------------------------------------
 function runGame(){
   background('#e3d5ca');
    //---PlayThrough Info------------
   push();
+    fill("#8E7DBE");
     textSize(30);
     textAlign("left");
     text(" Score: "+score, width*0.01, height*0.2);
@@ -304,7 +306,9 @@ function runGame(){
     }
     for (let sparc of sparx) {  
       updateSparc(sparc);
+       breakSparxLoops(sparc);
     }  
+   
     //---collision checks-----------------------------------------
     if (!playerInvinsible) {
     player.collides(sparx, playerHit);
@@ -389,8 +393,6 @@ function checkPlayerCollision() {
     playerHit();
   }
 }
-
-//---PLAYER HIT------------------------------------------
 function playerHit() {
   if (playerInvinsible) {
     console.log("Player is invulnerable, ignoring hit");
@@ -485,7 +487,6 @@ function playerHit() {
 }
  
 //---LEVEL OVER---------------------------------------------------------------
-
 function levelOver() {
   
   // Force game state to ensure we're in a known state
@@ -613,7 +614,6 @@ function levelOver() {
     }
   }, 300); // 300ms per state change
 }
-
 // Function to reset the game state
 function resetGame(toIntro = false) {
   
@@ -1002,9 +1002,6 @@ function handleCornerTurn(sparc, currentBorder) {
   // Find all borders that connect at this corner
   const connectedBorders = findConnectedBorders(corner, currentBorder);
   
-  // Debug output
-  console.log(`Corner at (${corner.x.toFixed(1)}, ${corner.y.toFixed(1)}), found ${connectedBorders.length} connected borders`);
-  
   // If we found connected borders, choose one to follow
   if (connectedBorders.length > 0) {
     // Determine previous direction
@@ -1033,8 +1030,34 @@ function handleCornerTurn(sparc, currentBorder) {
     // Use all connected borders if no valid ones (prefer some movement over none)
     const borderPool = validBorders.length > 0 ? validBorders : connectedBorders;
     
-    // Choose a random border
-    const chosenBorder = random(borderPool);
+    // Add randomness to path selection to prevent loops
+    // Store the last few choices to avoid immediate repeats
+    if (!sparc.lastChoices) sparc.lastChoices = [];
+    
+    // Create a weighted random selection
+    // Borders that weren't recently chosen get higher weights
+    let weightedBorders = [];
+    for (let border of borderPool) {
+      // Generate a unique ID for the border based on its properties
+      const borderID = `${border.w >= border.h ? 'H' : 'V'}-${border.x.toFixed(0)}-${border.y.toFixed(0)}`;
+      
+      // Check if this border was chosen recently
+      const wasTakenRecently = sparc.lastChoices.includes(borderID);
+      
+      // Add border to selection pool with weight based on recency
+      const weight = wasTakenRecently ? 1 : 3;  // Higher weight if not recently chosen
+      for (let i = 0; i < weight; i++) {
+        weightedBorders.push(border);
+      }
+    }
+    
+    // Choose a random border from weighted pool
+    const chosenBorder = random(weightedBorders);
+    
+    // Store this choice in history (limit to last 3 choices)
+    const chosenID = `${chosenBorder.w >= chosenBorder.h ? 'H' : 'V'}-${chosenBorder.x.toFixed(0)}-${chosenBorder.y.toFixed(0)}`;
+    sparc.lastChoices.unshift(chosenID);
+    if (sparc.lastChoices.length > 3) sparc.lastChoices.pop();
     
     // Set velocity based on new border orientation
     if (chosenBorder.w >= chosenBorder.h) { // Horizontal
@@ -1046,8 +1069,14 @@ function handleCornerTurn(sparc, currentBorder) {
       } else if (corner.x >= chosenBorder.x + chosenBorder.w/2 - 5) {
         sparc.velocity.x = -sparcSpeed; // Go left from right edge
       } else {
-        // In the middle of the border, choose based on previous movement or randomly
-        sparc.velocity.x = prevDirX !== 0 ? sparcSpeed * prevDirX : (random() > 0.5 ? sparcSpeed : -sparcSpeed);
+        // Introduce randomness in the middle of the border
+        // But with bias against previous direction to avoid ping-pong loops
+        const bias = random();
+        if (bias < 0.7) { // 70% chance to go in a different direction than before
+          sparc.velocity.x = (prevDirX !== 0) ? -sparcSpeed * prevDirX : (random() > 0.5 ? sparcSpeed : -sparcSpeed);
+        } else {
+          sparc.velocity.x = (prevDirX !== 0) ? sparcSpeed * prevDirX : (random() > 0.5 ? sparcSpeed : -sparcSpeed);
+        }
       }
     } else { // Vertical
       sparc.velocity.x = 0;
@@ -1058,22 +1087,33 @@ function handleCornerTurn(sparc, currentBorder) {
       } else if (corner.y >= chosenBorder.y + chosenBorder.h/2 - 5) {
         sparc.velocity.y = -sparcSpeed; // Go up from bottom edge
       } else {
-        // In the middle of the border, choose based on previous movement or randomly
-        sparc.velocity.y = prevDirY !== 0 ? sparcSpeed * prevDirY : (random() > 0.5 ? sparcSpeed : -sparcSpeed);
+        // Introduce randomness in the middle of the border
+        // But with bias against previous direction to avoid ping-pong loops
+        const bias = random();
+        if (bias < 0.7) { // 70% chance to go in a different direction than before
+          sparc.velocity.y = (prevDirY !== 0) ? -sparcSpeed * prevDirY : (random() > 0.5 ? sparcSpeed : -sparcSpeed);
+        } else {
+          sparc.velocity.y = (prevDirY !== 0) ? sparcSpeed * prevDirY : (random() > 0.5 ? sparcSpeed : -sparcSpeed);
+        }
       }
     }
     
-    console.log(`Sparc at corner choosing ${chosenBorder.w >= chosenBorder.h ? 'horizontal' : 'vertical'} border, velocity: (${sparc.velocity.x}, ${sparc.velocity.y})`);
+    // Add a small random delay before we unset the handling flag
+    // This helps prevent multiple corner handling events in quick succession
+    const randomDelay = 300 + Math.floor(random() * 200);
+    setTimeout(() => {
+      sparc.isHandlingCorner = false;
+    }, randomDelay);
+    
+    // Add a small amount of variability to speed to break up patterns
+    sparc.maxSpeed = sparcSpeed * (0.9 + random() * 0.2);  // Speed varies by ±10%
+    
   } else {
     // No valid connected borders, try to recover
     console.log("No connected borders found at corner, trying recovery");
     findAndMoveToNearestBorder(sparc);
-  }
-  
-  // Reset the corner handling flag after a delay
-  setTimeout(() => {
     sparc.isHandlingCorner = false;
-  }, 300);
+  }
 }
 // Continue movement along the current border
 function continueAlongBorder(sparc, border) {
@@ -1175,9 +1215,198 @@ function continueAlongBorder(sparc, border) {
       }
     }
   }
+
+  sparc.patternSteps++;
+  if (sparc.patternSteps >= sparc.patternDuration) {
+    // Change movement pattern
+    sparc.movementPattern = (sparc.movementPattern + 1) % 3;
+    sparc.patternDuration = Math.floor(random(50, 150));
+    sparc.patternSteps = 0;
+  }
+  // Use pattern to influence behavior
+  switch(sparc.movementPattern) {
+    case 0: // Standard movement
+      // Default behavior, no change
+      break;
+    case 1: // Prefer direction changes
+      // Increase chance of turning at next junction
+      if (isAtBorderCorner(sparc, 15)) { // Increased detection radius
+        handleCornerTurn(sparc, currentBorder);
+      }
+      break;
+    case 2: // Prefer straight paths
+      // Reduce chance of turning
+      if (isAtBorderCorner(sparc, 5)) { // Reduced detection radius
+        if (random() < 0.5) { // Only 50% chance to recognize corner
+          handleCornerTurn(sparc, currentBorder);
+        }
+      }
+      break;
+  }
+
 }
+// Add this new function to further handle stuck sparx
+function breakSparxLoops(sparc) {
+      // Check if the sparc has visited the same positions repeatedly
+      if (!sparc.positionHistory) sparc.positionHistory = [];
+      
+      // Add current position to history
+      sparc.positionHistory.unshift({x: sparc.x, y: sparc.y});
+      if (sparc.positionHistory.length > 20) sparc.positionHistory.pop();
+      
+      // Check for repeating patterns (at least 6 points)
+      if (sparc.positionHistory.length >= 12) {
+        let repeatingPattern = true;
+        for (let i = 0; i < 6; i++) {
+          // Compare first half with second half
+          const p1 = sparc.positionHistory[i];
+          const p2 = sparc.positionHistory[i+6];
+          
+          // If any point doesn't match, it's not a repeating pattern
+          if (dist(p1.x, p1.y, p2.x, p2.y) > 5) {
+            repeatingPattern = false;
+            break;
+          }
+        }
+        
+        // If we detected a loop, force a random direction change
+        if (repeatingPattern) {
+          console.log("Breaking sparx movement loop");
+          // Find the nearest border and randomize direction
+          findAndMoveToNearestBorder(sparc);
+          
+          // Randomize direction
+          if (Math.abs(sparc.velocity.x) > Math.abs(sparc.velocity.y)) {
+            // Currently moving horizontally, flip direction with bias to change
+            if (random() < 0.8) sparc.velocity.x *= -1;
+          } else {
+            // Currently moving vertically, flip direction with bias to change
+            if (random() < 0.8) sparc.velocity.y *= -1;
+          }
+          
+          // Reset pattern history
+          sparc.positionHistory = [];
+          
+          // Give it a short invulnerability to teleport effect
+          sparc.isHandlingCorner = false;
+        }
+      }
+}
+function checkForStuckSparx() {
+    for (let sparc of sparx) {
+      // Check if sparc has been stuck in the same position
+      if (!sparc.lastX) {
+        sparc.lastX = sparc.x;
+        sparc.lastY = sparc.y;
+        sparc.stuckTime = 0;
+      } else {
+        // If position hasn't changed significantly
+        if (dist(sparc.x, sparc.y, sparc.lastX, sparc.lastY) < 1) {
+          sparc.stuckTime = (sparc.stuckTime || 0) + 1;
+          
+          // If stuck for too long (adjust threshold as needed)
+          if (sparc.stuckTime > 90) { // About 1.5 seconds at 60fps
+            console.log("Fixing stuck sparx");
+            findAndMoveToNearestBorder(sparc);
+            sparc.isHandlingCorner = false;
+            sparc.stuckTime = 0;
+          }
+        } else {
+          // Reset if moving normally
+          sparc.lastX = sparc.x;
+          sparc.lastY = sparc.y;
+          sparc.stuckTime = 0;
+        }
+      }
+    }
+}
+function repositionAllSparx() {
+    for (let sparc of sparx) {
+      // Reset sparc properties
+      sparc.isHandlingCorner = false;
+      sparc.cornerPoint = null;
+      sparc.stuckTime = 0;
+      
+      // Check if the sparc is on any border
+      let onAnyBorder = false;
+      let currentBorder = null;
+      
+      for (let border of Borders) {
+        if (isOnBorder(sparc, border, 5)) {
+          onAnyBorder = true;
+          currentBorder = border;
+          break;
+        }
+      }
+      
+      // If on a border, make sure velocity aligns with it
+      if (onAnyBorder && currentBorder) {
+        if (currentBorder.w >= currentBorder.h) { // Horizontal
+          sparc.y = currentBorder.y; // Snap to border
+          sparc.velocity.y = 0;
+          
+          // Set a consistent horizontal velocity
+          const movingRight = random() > 0.5;
+          sparc.velocity.x = movingRight ? sparcSpeed : -sparcSpeed;
+          
+          // Check if we're near an edge and fix direction to avoid immediate reversal
+          const leftEdge = currentBorder.x - currentBorder.w/2;
+          const rightEdge = currentBorder.x + currentBorder.w/2;
+          
+          if (sparc.x < leftEdge + 10 && sparc.velocity.x < 0) {
+            sparc.velocity.x = sparcSpeed; // Moving right if near left edge
+          } else if (sparc.x > rightEdge - 10 && sparc.velocity.x > 0) {
+            sparc.velocity.x = -sparcSpeed; // Moving left if near right edge
+          }
+        } else { // Vertical
+          sparc.x = currentBorder.x; // Snap to border
+          sparc.velocity.x = 0;
+          
+          // Set a consistent vertical velocity
+          const movingDown = random() > 0.5;
+          sparc.velocity.y = movingDown ? sparcSpeed : -sparcSpeed;
+          
+          // Check if we're near an edge and fix direction to avoid immediate reversal
+          const topEdge = currentBorder.y - currentBorder.h/2;
+          const bottomEdge = currentBorder.y + currentBorder.h/2;
+          
+          if (sparc.y < topEdge + 10 && sparc.velocity.y < 0) {
+            sparc.velocity.y = sparcSpeed; // Moving down if near top edge
+          } else if (sparc.y > bottomEdge - 10 && sparc.velocity.y > 0) {
+            sparc.velocity.y = -sparcSpeed; // Moving up if near bottom edge
+          }
+        }
+      } else {
+        // Not on any border, move to a safe one
+        const originalBorders = [Borders[0], Borders[1], Borders[2], Borders[3]];
+        const safeBorder = random(originalBorders);
+        
+        // Position near the middle of the safe border
+        if (safeBorder.w >= safeBorder.h) { // Horizontal
+          sparc.x = safeBorder.x;
+          sparc.y = safeBorder.y;
+          sparc.velocity.x = random() > 0.5 ? sparcSpeed : -sparcSpeed;
+          sparc.velocity.y = 0;
+        } else { // Vertical
+          sparc.x = safeBorder.x;
+          sparc.y = safeBorder.y;
+          sparc.velocity.x = 0;
+          sparc.velocity.y = random() > 0.5 ? sparcSpeed : -sparcSpeed;
+        }
+      }
+    }
+}
+//check if a sparc is on any border
+function isSparcOnBorder(sparc, tolerance = 3) {
+  for (let border of Borders) {
+    if (isOnBorder(sparc, border, tolerance)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 //---PLAYER MOVEMENT------------------------------------------------------
-// Helper function to set direction and update speeds
 // In the setPlayerDirection function, change the speed values
 function setPlayerDirection(direction) {
   PspeedX = 0; // Reset both speeds first
@@ -1211,7 +1440,6 @@ function setPlayerDirection(direction) {
   currentPlayerDirection = direction;
   lastPlayerDirChange = millis(); // Update timestamp
 }
-// Helper function to stop movement
 function stopMovement() {
   PspeedX = 0;
   PspeedY = 0;
@@ -1265,6 +1493,7 @@ function keyReleased() {
     stopMovement();
   }
 }
+
 //---TRAILS AND AREA-----------------------------------------------
 function isPlayerOnBorder(tolerance = 5) {
   for (let border of Borders) {
@@ -1285,7 +1514,6 @@ function findLastTouchedBorder() {
 function findCurrentTouchedBorder() {
   return findLastTouchedBorder(); // Same logic but when returning to a border
 }
-
 function createTrailSegment(x, y) {
   const alignmentTolerance = 5;
   
@@ -1309,7 +1537,6 @@ function createTrailSegment(x, y) {
   currentTrail.push(segment);
   lastTrailSegmentPos = createVector(x, y);
 }
-// Improved attemptAreaClosure function
 function attemptAreaClosure(currentBorder) {
   console.log("Attempting area closure with " + currentTrail.length + " trail segments");
   
@@ -1441,122 +1668,6 @@ function convertTrailsToBorders() {
     console.error("Error in convertTrailsToBorders:", error);
   }
 }
-
-//---HELPERS-----------------------------------------------------
-// Check if sprite is on a specific border
-function isOnBorder(sprite, border, tolerance = 5) {
-    // For horizontal borders (wider than tall)
-    if (border.w >= border.h) {
-      return Math.abs(sprite.y - border.y) < tolerance && 
-            sprite.x >= border.x - border.w/2 - tolerance && 
-            sprite.x <= border.x + border.w/2 + tolerance;
-    } 
-    // For vertical borders (taller than wide)
-    else {
-      return Math.abs(sprite.x - border.x) < tolerance && 
-            sprite.y >= border.y - border.h/2 - tolerance && 
-            sprite.y <= border.y + border.h/2 + tolerance;
-    }
-}
-
-function findBorderIntersection() {
-  // Find which border the player was last on
-  let closestBorder = null;
-  let minDistance = Infinity;
-  let exactPoint = null;
-  
-  for (let border of Borders) {
-    let distance, point;
-    
-    // For horizontal borders
-    if (border.w >= border.h) {
-      distance = Math.abs(player.y - border.y);
-      
-      if (distance < minDistance && 
-          player.x >= border.x - border.w/2 - 5 && 
-          player.x <= border.x + border.w/2 + 5) {
-        
-        minDistance = distance;
-        closestBorder = border;
-        
-        // Calculate exact intersection
-        point = createVector(
-          Math.max(Math.min(player.x, border.x + border.w/2), border.x - border.w/2),
-          border.y
-        );
-        exactPoint = point;
-      }
-    } 
-    // For vertical borders
-    else {
-      distance = Math.abs(player.x - border.x);
-      
-      if (distance < minDistance &&
-          player.y >= border.y - border.h/2 - 5 && 
-          player.y <= border.y + border.h/2 + 5) {
-        
-        minDistance = distance;
-        closestBorder = border;
-        
-        // Calculate exact intersection
-        point = createVector(
-          border.x,
-          Math.max(Math.min(player.y, border.y + border.h/2), border.y - border.h/2)
-        );
-        exactPoint = point;
-      }
-    }
-  }
-  
-  // If we found an exact intersection point, use it
-  if (exactPoint) {
-    return exactPoint;
-  }
-  
-  // Otherwise use a more general approach
-  if (closestBorder) {
-    if (closestBorder.w >= closestBorder.h) {
-      // Horizontal border - x from player, y from border
-      return createVector(player.x, closestBorder.y);
-    } else {
-      // Vertical border - x from border, y from player
-      return createVector(closestBorder.x, player.y);
-    }
-  }
-  
-  // Fallback if no border found (shouldn't happen)
-  return createVector(player.x, player.y);
-}
-
-
-// Clear trail segments properly
-function clearTrailSegments() {
-  // Log before cleaning up to help with debugging
-  console.log(`Clearing ${currentTrail.length} trail segments`);
-  
-  // More thorough cleanup of trail segments
-  for (let segment of currentTrail) {
-    if (segment) {
-      segment.remove();
-    }
-  }
-  
-  // Reset trail variables
-  currentTrail = [];
-  trailStartPoint = null;
-  lastTrailSegmentPos = null;
-}
-
-// Flash the game field for visual feedback
-function flashGameField() {
-  let originalColor = gameField.color;
-  gameField.color = "#FFFFFF";
-  
-  setTimeout(() => {
-    gameField.color = originalColor;
-  }, 200);
-}
-
 // Convert the current trail into a proper polygon for area calculation
 function trailToPolygon() {
   if (!trailStartPoint || currentTrail.length < 2) {
@@ -1597,150 +1708,6 @@ function trailToPolygon() {
   
   return vertices;
 }
-
-// Find a path along borders that connects two points on borders
-function findBorderPath(startPoint, endPoint) {
-  // Find which borders the points are on
-  let startBorder = null;
-  let endBorder = null;
-  
-  for (let border of Borders) {
-    if (isPointOnBorder(startPoint, border, 5)) {
-      startBorder = border;
-    }
-    if (isPointOnBorder(endPoint, border, 5)) {
-      endBorder = border;
-    }
-  }
-  
-  if (!startBorder || !endBorder) {
-    return null;
-  }
-  
-  // If the points are on the same border, we only need a direct path
-  if (startBorder === endBorder) {
-    return [createVector(endPoint.x, endPoint.y)];
-  }
-  
-  // Otherwise, we need to follow the borders around
-  const path = [];
-  
-  // Get corners of the starting border
-  const startCorners = getBorderCorners(startBorder);
-  // Get corners of the ending border
-  const endCorners = getBorderCorners(endBorder);
-  
-  // Find the closest corner to the starting point
-  let currentPoint = startPoint;
-  let currentBorder = startBorder;
-  
-  // Keep track of visited borders to avoid loops
-  const visitedBorders = new Set();
-  visitedBorders.add(currentBorder);
-  
-  // Maximum iterations to prevent infinite loops
-  const maxIterations = 20;
-  let iterations = 0;
-  
-  while (currentBorder !== endBorder && iterations < maxIterations) {
-    iterations++;
-    
-    // Get corners of the current border
-    const corners = getBorderCorners(currentBorder);
-    // Find the closest corner to the current point
-    let closestCorner = null;
-    let minDist = Infinity;
-    
-    for (let corner of corners) {
-      const d = dist(currentPoint.x, currentPoint.y, corner.x, corner.y);
-      if (d < minDist) {
-        minDist = d;
-        closestCorner = corner;
-      }
-    }
-    
-    if (closestCorner) {
-      // Add the corner to the path
-      path.push(createVector(closestCorner.x, closestCorner.y));
-      currentPoint = closestCorner;
-      
-      // Find the next border that shares this corner
-      let nextBorder = null;
-      
-      for (let border of Borders) {
-        if (border !== currentBorder && !visitedBorders.has(border)) {
-          const borderCorners = getBorderCorners(border);
-          for (let corner of borderCorners) {
-            if (dist(corner.x, corner.y, closestCorner.x, closestCorner.y) < 5) {
-              nextBorder = border;
-              break;
-            }
-          }
-          if (nextBorder) break;
-        }
-      }
-      
-      if (nextBorder) {
-        currentBorder = nextBorder;
-        visitedBorders.add(currentBorder);
-      } else {
-        // No next border found, break
-        break;
-      }
-    } else {
-      // No closest corner found, break
-      break;
-    }
-  }
-  
-  // If we found a path to the end border, add the end point
-  if (currentBorder === endBorder) {
-    path.push(createVector(endPoint.x, endPoint.y));
-  }
-  
-  return path;
-}
-
-// Helper to check if a point is on a border
-function isPointOnBorder(point, border, tolerance = 3) {
-  // For horizontal borders (wider than tall)
-  if (border.w >= border.h) {
-    return Math.abs(point.y - border.y) < tolerance && 
-          point.x >= border.x - border.w/2 - tolerance && 
-          point.x <= border.x + border.w/2 + tolerance;
-  } 
-  // For vertical borders (taller than wide)
-  else {
-    return Math.abs(point.x - border.x) < tolerance && 
-          point.y >= border.y - border.h/2 - tolerance && 
-          point.y <= border.y + border.h/2 + tolerance;
-  }
-}
-
-// Get the corner points of a border
-function getBorderCorners(border) {
-  const corners = [];
-  
-  if (border.w >= border.h) { // Horizontal border
-    corners.push({x: border.x - border.w/2, y: border.y});
-    corners.push({x: border.x + border.w/2, y: border.y});
-  } else { // Vertical border
-    corners.push({x: border.x, y: border.y - border.h/2});
-    corners.push({x: border.x, y: border.y + border.h/2});
-  }
-  
-  return corners;
-}
-
-// Determine which side of the game area was claimed
-function determineClaimedSide(polygon) {
-  if (!polygon || polygon.length < 3) return "unknown";
-  
-  // Just return "smaller" as default for now
-  // This simplification helps avoid errors
-  return "smaller";
-}
-
 // Create a visual representation of the claimed area using the actual polygon
 function createAreaFill(polygon) {
   if (!polygon || polygon.length < 3) {
@@ -1811,7 +1778,6 @@ function createAreaFill(polygon) {
     console.error("Error in createAreaFill:", error);
   }
 }
-
 // Create border sprites from polygon edges
 function createBordersFromPolygon(polygon) {
   if (!polygon || polygon.length < 3) return;
@@ -1955,7 +1921,6 @@ function createBordersFromPolygon(polygon) {
     console.error("Error creating borders from polygon:", error);
   }
 }
-
 // New function to ensure junctions are properly connected
 function createJunctionConnections(newBorders) {
   // Get all original borders
@@ -2023,7 +1988,6 @@ function createJunctionConnections(newBorders) {
     }
   }
 }
-
 function fillClaimedArea(polygon) {
   if (!polygon || polygon.length < 3) {
     console.log("Invalid polygon for area fill");
@@ -2149,17 +2113,31 @@ function fillClaimedArea(polygon) {
     return false;
   }
 }
-
-//check if a sparc is on any border
-function isSparcOnBorder(sparc, tolerance = 3) {
-  for (let border of Borders) {
-    if (isOnBorder(sparc, border, tolerance)) {
-      return true;
+// Clear trail segments properly
+function clearTrailSegments() {
+  // Log before cleaning up to help with debugging
+  console.log(`Clearing ${currentTrail.length} trail segments`);
+  
+  // More thorough cleanup of trail segments
+  for (let segment of currentTrail) {
+    if (segment) {
+      segment.remove();
     }
   }
-  return false;
+  
+  // Reset trail variables
+  currentTrail = [];
+  trailStartPoint = null;
+  lastTrailSegmentPos = null;
 }
-
+// Determine which side of the game area was claimed
+function determineClaimedSide(polygon) {
+  if (!polygon || polygon.length < 3) return "unknown";
+  
+  // Just return "smaller" as default for now
+  // This simplification helps avoid errors
+  return "smaller";
+}
 function simplifyPolygon(vertices, tolerance) {
   if (vertices.length <= 3) return vertices;
   
@@ -2200,112 +2178,231 @@ function simplifyPolygon(vertices, tolerance) {
   return result;
 }
 
-function checkForStuckSparx() {
-  for (let sparc of sparx) {
-    // Check if sparc has been stuck in the same position
-    if (!sparc.lastX) {
-      sparc.lastX = sparc.x;
-      sparc.lastY = sparc.y;
-      sparc.stuckTime = 0;
-    } else {
-      // If position hasn't changed significantly
-      if (dist(sparc.x, sparc.y, sparc.lastX, sparc.lastY) < 1) {
-        sparc.stuckTime = (sparc.stuckTime || 0) + 1;
+
+//---HELPERS-----------------------------------------------------
+// Check if sprite is on a specific border
+function isOnBorder(sprite, border, tolerance = 5) {
+    // For horizontal borders (wider than tall)
+    if (border.w >= border.h) {
+      return Math.abs(sprite.y - border.y) < tolerance && 
+            sprite.x >= border.x - border.w/2 - tolerance && 
+            sprite.x <= border.x + border.w/2 + tolerance;
+    } 
+    // For vertical borders (taller than wide)
+    else {
+      return Math.abs(sprite.x - border.x) < tolerance && 
+            sprite.y >= border.y - border.h/2 - tolerance && 
+            sprite.y <= border.y + border.h/2 + tolerance;
+    }
+}
+function findBorderIntersection() {
+  // Find which border the player was last on
+  let closestBorder = null;
+  let minDistance = Infinity;
+  let exactPoint = null;
+  
+  for (let border of Borders) {
+    let distance, point;
+    
+    // For horizontal borders
+    if (border.w >= border.h) {
+      distance = Math.abs(player.y - border.y);
+      
+      if (distance < minDistance && 
+          player.x >= border.x - border.w/2 - 5 && 
+          player.x <= border.x + border.w/2 + 5) {
         
-        // If stuck for too long (adjust threshold as needed)
-        if (sparc.stuckTime > 90) { // About 1.5 seconds at 60fps
-          console.log("Fixing stuck sparx");
-          findAndMoveToNearestBorder(sparc);
-          sparc.isHandlingCorner = false;
-          sparc.stuckTime = 0;
-        }
-      } else {
-        // Reset if moving normally
-        sparc.lastX = sparc.x;
-        sparc.lastY = sparc.y;
-        sparc.stuckTime = 0;
+        minDistance = distance;
+        closestBorder = border;
+        
+        // Calculate exact intersection
+        point = createVector(
+          Math.max(Math.min(player.x, border.x + border.w/2), border.x - border.w/2),
+          border.y
+        );
+        exactPoint = point;
+      }
+    } 
+    // For vertical borders
+    else {
+      distance = Math.abs(player.x - border.x);
+      
+      if (distance < minDistance &&
+          player.y >= border.y - border.h/2 - 5 && 
+          player.y <= border.y + border.h/2 + 5) {
+        
+        minDistance = distance;
+        closestBorder = border;
+        
+        // Calculate exact intersection
+        point = createVector(
+          border.x,
+          Math.max(Math.min(player.y, border.y + border.h/2), border.y - border.h/2)
+        );
+        exactPoint = point;
       }
     }
   }
+  
+  // If we found an exact intersection point, use it
+  if (exactPoint) {
+    return exactPoint;
+  }
+  
+  // Otherwise use a more general approach
+  if (closestBorder) {
+    if (closestBorder.w >= closestBorder.h) {
+      // Horizontal border - x from player, y from border
+      return createVector(player.x, closestBorder.y);
+    } else {
+      // Vertical border - x from border, y from player
+      return createVector(closestBorder.x, player.y);
+    }
+  }
+  
+  // Fallback if no border found (shouldn't happen)
+  return createVector(player.x, player.y);
 }
-
-function repositionAllSparx() {
-  for (let sparc of sparx) {
-    // Reset sparc properties
-    sparc.isHandlingCorner = false;
-    sparc.cornerPoint = null;
-    sparc.stuckTime = 0;
+// Flash the game field for visual feedback
+function flashGameField() {
+  let originalColor = gameField.color;
+  gameField.color = "#FFFFFF";
+  
+  setTimeout(() => {
+    gameField.color = originalColor;
+  }, 200);
+}
+// Find a path along borders that connects two points on borders
+function findBorderPath(startPoint, endPoint) {
+  // Find which borders the points are on
+  let startBorder = null;
+  let endBorder = null;
+  
+  for (let border of Borders) {
+    if (isPointOnBorder(startPoint, border, 5)) {
+      startBorder = border;
+    }
+    if (isPointOnBorder(endPoint, border, 5)) {
+      endBorder = border;
+    }
+  }
+  
+  if (!startBorder || !endBorder) {
+    return null;
+  }
+  
+  // If the points are on the same border, we only need a direct path
+  if (startBorder === endBorder) {
+    return [createVector(endPoint.x, endPoint.y)];
+  }
+  
+  // Otherwise, we need to follow the borders around
+  const path = [];
+  
+  // Get corners of the starting border
+  const startCorners = getBorderCorners(startBorder);
+  // Get corners of the ending border
+  const endCorners = getBorderCorners(endBorder);
+  
+  // Find the closest corner to the starting point
+  let currentPoint = startPoint;
+  let currentBorder = startBorder;
+  
+  // Keep track of visited borders to avoid loops
+  const visitedBorders = new Set();
+  visitedBorders.add(currentBorder);
+  
+  // Maximum iterations to prevent infinite loops
+  const maxIterations = 20;
+  let iterations = 0;
+  
+  while (currentBorder !== endBorder && iterations < maxIterations) {
+    iterations++;
     
-    // Check if the sparc is on any border
-    let onAnyBorder = false;
-    let currentBorder = null;
+    // Get corners of the current border
+    const corners = getBorderCorners(currentBorder);
+    // Find the closest corner to the current point
+    let closestCorner = null;
+    let minDist = Infinity;
     
-    for (let border of Borders) {
-      if (isOnBorder(sparc, border, 5)) {
-        onAnyBorder = true;
-        currentBorder = border;
+    for (let corner of corners) {
+      const d = dist(currentPoint.x, currentPoint.y, corner.x, corner.y);
+      if (d < minDist) {
+        minDist = d;
+        closestCorner = corner;
+      }
+    }
+    
+    if (closestCorner) {
+      // Add the corner to the path
+      path.push(createVector(closestCorner.x, closestCorner.y));
+      currentPoint = closestCorner;
+      
+      // Find the next border that shares this corner
+      let nextBorder = null;
+      
+      for (let border of Borders) {
+        if (border !== currentBorder && !visitedBorders.has(border)) {
+          const borderCorners = getBorderCorners(border);
+          for (let corner of borderCorners) {
+            if (dist(corner.x, corner.y, closestCorner.x, closestCorner.y) < 5) {
+              nextBorder = border;
+              break;
+            }
+          }
+          if (nextBorder) break;
+        }
+      }
+      
+      if (nextBorder) {
+        currentBorder = nextBorder;
+        visitedBorders.add(currentBorder);
+      } else {
+        // No next border found, break
         break;
       }
-    }
-    
-    // If on a border, make sure velocity aligns with it
-    if (onAnyBorder && currentBorder) {
-      if (currentBorder.w >= currentBorder.h) { // Horizontal
-        sparc.y = currentBorder.y; // Snap to border
-        sparc.velocity.y = 0;
-        
-        // Set a consistent horizontal velocity
-        const movingRight = random() > 0.5;
-        sparc.velocity.x = movingRight ? sparcSpeed : -sparcSpeed;
-        
-        // Check if we're near an edge and fix direction to avoid immediate reversal
-        const leftEdge = currentBorder.x - currentBorder.w/2;
-        const rightEdge = currentBorder.x + currentBorder.w/2;
-        
-        if (sparc.x < leftEdge + 10 && sparc.velocity.x < 0) {
-          sparc.velocity.x = sparcSpeed; // Moving right if near left edge
-        } else if (sparc.x > rightEdge - 10 && sparc.velocity.x > 0) {
-          sparc.velocity.x = -sparcSpeed; // Moving left if near right edge
-        }
-      } else { // Vertical
-        sparc.x = currentBorder.x; // Snap to border
-        sparc.velocity.x = 0;
-        
-        // Set a consistent vertical velocity
-        const movingDown = random() > 0.5;
-        sparc.velocity.y = movingDown ? sparcSpeed : -sparcSpeed;
-        
-        // Check if we're near an edge and fix direction to avoid immediate reversal
-        const topEdge = currentBorder.y - currentBorder.h/2;
-        const bottomEdge = currentBorder.y + currentBorder.h/2;
-        
-        if (sparc.y < topEdge + 10 && sparc.velocity.y < 0) {
-          sparc.velocity.y = sparcSpeed; // Moving down if near top edge
-        } else if (sparc.y > bottomEdge - 10 && sparc.velocity.y > 0) {
-          sparc.velocity.y = -sparcSpeed; // Moving up if near bottom edge
-        }
-      }
     } else {
-      // Not on any border, move to a safe one
-      const originalBorders = [Borders[0], Borders[1], Borders[2], Borders[3]];
-      const safeBorder = random(originalBorders);
-      
-      // Position near the middle of the safe border
-      if (safeBorder.w >= safeBorder.h) { // Horizontal
-        sparc.x = safeBorder.x;
-        sparc.y = safeBorder.y;
-        sparc.velocity.x = random() > 0.5 ? sparcSpeed : -sparcSpeed;
-        sparc.velocity.y = 0;
-      } else { // Vertical
-        sparc.x = safeBorder.x;
-        sparc.y = safeBorder.y;
-        sparc.velocity.x = 0;
-        sparc.velocity.y = random() > 0.5 ? sparcSpeed : -sparcSpeed;
-      }
+      // No closest corner found, break
+      break;
     }
   }
+  
+  // If we found a path to the end border, add the end point
+  if (currentBorder === endBorder) {
+    path.push(createVector(endPoint.x, endPoint.y));
+  }
+  
+  return path;
 }
-
+// Helper to check if a point is on a border
+function isPointOnBorder(point, border, tolerance = 3) {
+  // For horizontal borders (wider than tall)
+  if (border.w >= border.h) {
+    return Math.abs(point.y - border.y) < tolerance && 
+          point.x >= border.x - border.w/2 - tolerance && 
+          point.x <= border.x + border.w/2 + tolerance;
+  } 
+  // For vertical borders (taller than wide)
+  else {
+    return Math.abs(point.x - border.x) < tolerance && 
+          point.y >= border.y - border.h/2 - tolerance && 
+          point.y <= border.y + border.h/2 + tolerance;
+  }
+}
+// Get the corner points of a border
+function getBorderCorners(border) {
+  const corners = [];
+  
+  if (border.w >= border.h) { // Horizontal border
+    corners.push({x: border.x - border.w/2, y: border.y});
+    corners.push({x: border.x + border.w/2, y: border.y});
+  } else { // Vertical border
+    corners.push({x: border.x, y: border.y - border.h/2});
+    corners.push({x: border.x, y: border.y + border.h/2});
+  }
+  
+  return corners;
+}
 function getAllBorderCorners() {
   const corners = [];
   
@@ -2354,7 +2451,6 @@ function getAllBorderCorners() {
   
   return uniqueCorners;
 }
-
 // Find the intersection point between two perpendicular borders
 function findBorderIntersectionPoint(border1, border2) {
   // Ensure one is horizontal and one is vertical
@@ -2383,7 +2479,6 @@ function findBorderIntersectionPoint(border1, border2) {
   
   return null; // No intersection
 }
-
 function findConnectedBorders(corner, currentBorder) {
   const connectedBorders = [];
   
@@ -2435,7 +2530,6 @@ function findConnectedBorders(corner, currentBorder) {
   
   return connectedBorders;
 }
-
 function initOriginalBorders() {
   // Mark the original borders specially
   for (let i = 0; i < 4; i++) {
@@ -2444,7 +2538,6 @@ function initOriginalBorders() {
     }
   }
 }
-
 function markOriginalBorders() {
   for (let i = 0; i < 4; i++) {
     if (Borders[i]) {

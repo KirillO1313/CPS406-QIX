@@ -164,6 +164,7 @@ function setup() {
   qixi.overlaps(gameField);
 
   sparx.overlaps(gameField);
+  sparx.overlaps(sparx);
   sparx.overlaps(Borders);
   sparx.overlaps(trails); 
 
@@ -190,7 +191,7 @@ function draw() {
   }
 }
 
-//---GAME-------------------------------------------------------------------------
+//---GAMESTATES-------------------------------------------------------------------------
 function intro(){
   // Set a black background to clear any previous content
   background(0);
@@ -330,6 +331,34 @@ function runGame(){
     }
   }
     //---check player progress-------------------------------------
+    if (level === 1) {
+      if(claimedArea >= 15){
+        level++;
+        addSparc();
+      }
+    } 
+    else if (level === 2) {
+      if(claimedArea >= 30){
+        level++;
+        addQix();
+        addSparc();
+      }
+    }
+    else if (level === 3) {
+      if(claimedArea >= 45){
+        level++;
+        addSparc();
+      }
+    }
+    else if (level === 4) {
+      if(claimedArea >= 60){
+        level++;
+        addQix();
+        addSparc();
+      }
+    }
+
+
     if (claimedArea >= 75) {
       levelOver();
     }
@@ -375,6 +404,54 @@ checkForStuckSparx();
   if (gameState === runGame) {
     allSprites.update();
     world.step();
+  }
+}
+
+//---DIFFICULTY PROGRESSION--------------------------------------------------
+function addSparc() {
+	let newSparc = new sparx.Sprite();
+  // Check the distance between the player and the new sparc
+  let distance = dist(player.x, player.y, newSparc.x, newSparc.y);
+  if (distance <= player.diameter * 2) {
+    // if too close adjust the x position of the new sparc
+    newSparc.x += windowWidth / 4;
+  }
+  
+}
+function addQix() {
+  let newQix;
+  let isValidPosition = false;
+
+  while (!isValidPosition) {
+    // Create a new Qix at a random position within the game field
+    newQix = new qixi.Sprite();
+    newQix.x = random(gameField.x - gameField.w / 2, gameField.x + gameField.w / 2);
+    newQix.y = random(gameField.y - gameField.h / 2, gameField.y + gameField.h / 2);
+
+    // Check the distance between the player and the new Qix
+    let distance = dist(player.x, player.y, newQix.x, newQix.y);
+
+    // Check if the Qix is inside a claimed area
+    let isInsideClaimedArea = false;
+    for (let claimed of window.claimedSprites || []) {
+      if (
+        newQix.x >= claimed.x - claimed.w / 2 &&
+        newQix.x <= claimed.x + claimed.w / 2 &&
+        newQix.y >= claimed.y - claimed.h / 2 &&
+        newQix.y <= claimed.y + claimed.h / 2
+      ) {
+        isInsideClaimedArea = true;
+        break;
+      }
+    }
+
+    // If the position is valid, exit the loop
+    if (distance > player.diameter * 2 && !isInsideClaimedArea) {
+      isValidPosition = true;
+    } else {
+      // Remove the invalid Qix sprite before retrying
+      newQix.remove();
+    }
   }
 }
 
@@ -614,6 +691,7 @@ function levelOver() {
     }
   }, 300); // 300ms per state change
 }
+
 // Function to reset the game state
 function resetGame(toIntro = false) {
   
@@ -902,7 +980,6 @@ function updateSparc(sparc) {
     findAndMoveToNearestBorder(sparc);
   }
 }
-// Find the nearest border and move the sparc towards it
 function findAndMoveToNearestBorder(sparc) {
   let nearestPoint = null;
   let minDist = Infinity;
@@ -1115,7 +1192,7 @@ function handleCornerTurn(sparc, currentBorder) {
     sparc.isHandlingCorner = false;
   }
 }
-// Continue movement along the current border
+
 function continueAlongBorder(sparc, border) {
   // For horizontal borders
   if (border.w >= border.h) {
@@ -1245,7 +1322,6 @@ function continueAlongBorder(sparc, border) {
   }
 
 }
-// Add this new function to further handle stuck sparx
 function breakSparxLoops(sparc) {
       // Check if the sparc has visited the same positions repeatedly
       if (!sparc.positionHistory) sparc.positionHistory = [];

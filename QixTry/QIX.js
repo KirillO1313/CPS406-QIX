@@ -5,7 +5,9 @@ let Borders;
 // [2] TOP;
 // [3] BOTTOM;
 
-let level = 1;
+
+let level;
+let levelWon = false;
 let hearts;
 let heartImg;
 let gameState = intro;
@@ -51,6 +53,7 @@ function setup() {
   textAlign(CENTER);
   world.gravity.y = 0;
   world.gravity.x = 0;
+  level = 1;
 
   //---GAME FIELD AND BORDERS---
   gameField = new Sprite();
@@ -331,34 +334,6 @@ function runGame(){
     }
   }
     //---check player progress-------------------------------------
-    if (level === 1) {
-      if(claimedArea >= 15){
-        level++;
-        addSparc();
-      }
-    } 
-    else if (level === 2) {
-      if(claimedArea >= 30){
-        level++;
-        addQix();
-        addSparc();
-      }
-    }
-    else if (level === 3) {
-      if(claimedArea >= 45){
-        level++;
-        addSparc();
-      }
-    }
-    else if (level === 4) {
-      if(claimedArea >= 60){
-        level++;
-        addQix();
-        addSparc();
-      }
-    }
-
-
     if (claimedArea >= 75) {
       levelOver();
     }
@@ -416,8 +391,15 @@ function addSparc() {
     // if too close adjust the x position of the new sparc
     newSparc.x += windowWidth / 4;
   }
-  
+  for (let s of sparx) {
+    if (s.x === newSparc.x && s.y === newSparc.y) {
+      // If the position is already occupied, remove the new sparc and try again
+      newSparc.x += windowWidth / 4;
+
+    }
+  }  
 }
+
 function addQix() {
   let newQix;
   let isValidPosition = false;
@@ -565,43 +547,45 @@ function playerHit() {
  
 //---LEVEL OVER---------------------------------------------------------------
 function levelOver() {
-  
   // Force game state to ensure we're in a known state
   gameState = runGame;
-  
+
   // Stop all movement - multiple layers of stopping
   allSprites.autoUpdate = false;
   world.autoStep = false;
-  
+
   // Manually set all sprite velocities to zero
   for (let sprite of allSprites) {
     sprite.velocity.x = 0;
     sprite.velocity.y = 0;
     sprite.speed = 0;
   }
-  
+
   // Reset player control variables
   PspeedX = 0;
   PspeedY = 0;
   currentPlayerDirection = null;
-  
+
   // Store current state
-  let levelWon = claimedArea >= 75;
-  let finalScore = score;
-  let finalArea = claimedArea;
-  
+  if (claimedArea >= 75){
+    levelWon = true;
+  }
+  else {
+    levelWon = false;
+  }
+
   console.log("Level won:", levelWon);
-  console.log("Final score:", finalScore);
-  console.log("Final area:", finalArea);
-  
+  console.log("Final score:", score);
+  console.log("Final area:", claimedArea);
+  console.log("level:", level);
+
   // Make sure gameOverScreen function exists before we try to use it
   if (typeof gameOverScreen !== 'function') {
-    
+
     window.gameOverScreen = function() {
-      
       background('#e3d5ca');
       gameField.visible = true;
-      
+
       // Draw everything but ensure nothing moves
       for (let sprite of allSprites) {
         // Double check that velocities are still zero
@@ -610,55 +594,72 @@ function levelOver() {
         sprite.speed = 0;
         sprite.draw();
       }
-      
+
       // Overlay with semi-transparent background
       push();
       fill(0, 0, 0, 180);
       rect(0, 0, width, height);
-      
+
       // Game over message
       textFont(font);
       textSize(40);
       if (levelWon) {
         fill("#B6EFD4"); // Green from palette
-        text("LEVEL COMPLETE!", width/2, height/3);
-      } else {
+        if (level < 5){
+             text("LEVEL COMPLETE!", width/2, height/3);
+        }
+        else {
+          text("CONGRATULATION YOU FINISHED THE GAME!", width/2, height/3);
+        }
+      } 
+      else {
         fill("#D88C9A"); // Red from palette
         text("GAME OVER", width/2, height/3);
       }
-      
+
       // Display stats
       textSize(24);
       fill("white");
-      text(`Score: ${finalScore}`, width/2, height/2 - 40);
-      text(`Area Claimed: ${finalArea.toFixed(2)}%`, width/2, height/2);
-      
+      text("Level: " + level, width/2, height/2 - 60);
+      text(`Score: ${score}`, width/2, height/2 - 40);
+      text(`Area Claimed: ${claimedArea.toFixed(2)}%`, width/2, height/2);
+
       // Options
       textSize(30);
-      
-      // Restart button
-      let restartBtnY = height/2 + 80;
-      if (mouseY > restartBtnY - 25 && mouseY < restartBtnY + 25 && 
+
+      // First button: Next Level or Restart
+      let firstBtnY = height/2 + 80;
+      if (mouseY > firstBtnY - 25 && mouseY < firstBtnY + 25 && 
           mouseX > width/2 - 100 && mouseX < width/2 + 100) {
         fill("#8E7DBE"); // Purple from palette
         if (mouse.presses()) {
-          // Pass false to resetGame to restart the game
-          resetGame(false);
+          if (levelWon && level < 5) {
+            // Next level
+            nextLevelReset();
+          } else {
+            // Full restart
+            fullReset();
+          }
           return;
         }
       } else {
         fill("white");
       }
-      text("Play Again", width/2, restartBtnY);
-      
+
+      if (levelWon && level < 5) {
+        text("Next Level", width/2, firstBtnY);
+      } else {
+        text("Restart", width/2, firstBtnY);
+      }
+
       // Main menu button
       let menuBtnY = height/2 + 140;
       if (mouseY > menuBtnY - 25 && mouseY < menuBtnY + 25 && 
           mouseX > width/2 - 100 && mouseX < width/2 + 100) {
         fill("#8E7DBE"); // Purple from palette
         if (mouse.presses()) {
-          // Pass true to resetGame to indicate we're going back to intro
-          resetGame(true);
+          // Go back to intro with full reset
+          fullReset(true);
           return;
         }
       } else {
@@ -668,7 +669,7 @@ function levelOver() {
       pop();
     };
   }
-  
+
   // Create a blinking effect for the player with a reliable transition to the game over screen
   let blinkCount = 0;
   let blinkInterval = setInterval(() => {
@@ -676,13 +677,13 @@ function levelOver() {
       player.visible = !player.visible;
     }
     blinkCount++;
-    
+
     if (blinkCount >= 6) { // 3 blinks (on-off cycles)
       clearInterval(blinkInterval);
       if (player) {
         player.visible = true;
       }
-      
+
       // After blinking, explicitly change the game state with a small delay
       // to ensure all timers complete first
       setTimeout(() => {
@@ -692,15 +693,14 @@ function levelOver() {
   }, 300); // 300ms per state change
 }
 
-// Function to reset the game state
-function resetGame(toIntro = false) {
-  
-  // Ensure the game field is visible - ADD THIS BLOCK
+// Function for full game reset (back to level 1)
+function fullReset(toIntro = false) {
+  // Ensure the game field is visible
   if (gameField) {
     gameField.visible = true;
   }
   
-  // Clean up any claimed area tracking - ADD THIS BLOCK
+  // Clean up any claimed area tracking
   window.lastClaimedArea = [];
   window.claimedSprites = window.claimedSprites || [];
   
@@ -723,12 +723,127 @@ function resetGame(toIntro = false) {
     window.fillAreas = [];
   }
   
-  // Reset game variables
+  // Reset game variables to initial state
   score = 0;
   claimedArea = 0;
   lives = 3;
   level = 1;
   
+  // Remove all existing enemies
+  for (let enemy of qixi) {
+    enemy.remove();
+  }
+  for (let enemy of sparx) {
+    enemy.remove();
+  }
+  
+  // Create level 1 enemies
+  let newQix = new qixi.Sprite();
+  let newSparc = new sparx.Sprite();
+  
+  // Reset common game elements
+  resetCommonElements();
+  
+  // If returning to intro, hide all sprites
+  if (toIntro) {
+    for (let sprite of allSprites) {
+      sprite.visible = false;
+    }
+    gameState = intro;
+  } else {
+    // Make all sprites visible for gameplay (except any residual trails)
+    for (let sprite of allSprites) {
+      if (trails.includes(sprite)) {
+        // Additional check to hide any lingering trail sprites
+        sprite.visible = false;
+      } else {
+        sprite.visible = true;
+      }
+    }
+    // Resume game physics and updates
+    allSprites.autoUpdate = true;
+    world.autoStep = true;
+    // Set game state back to running
+    playerInvinsible = false; // Reset invincibility
+    gameState = runGame;
+  }
+}
+// Function for next level reset (keeping level progress)
+function nextLevelReset() {
+  // Ensure the game field is visible
+  if (gameField) {
+    gameField.visible = true;
+  }
+  
+  // Clean up any claimed area tracking
+  window.lastClaimedArea = [];
+  window.claimedSprites = window.claimedSprites || [];
+  
+  // Remove existing claimed area sprites
+  for (let sprite of window.claimedSprites) {
+    if (sprite) {
+      sprite.remove();
+    }
+  }
+  window.claimedSprites = [];
+
+  if (window.fillAreas && window.fillAreas.length > 0) {
+    for (let area of window.fillAreas) {
+      if (area.sprites && area.sprites.length > 0) {
+        for (let sprite of area.sprites) {
+          if (sprite) sprite.remove();
+        }
+      }
+    }
+    window.fillAreas = [];
+  }
+  
+  // Reset score and area, but keep level progression
+  score = 0;
+  claimedArea = 0;
+  lives = 3;
+  
+  // Increment level
+  level++;
+  console.log("Level increased to:", level);
+  
+  // Add appropriate enemies based on current level
+  if (level === 2) {
+    addSparc();
+  } 
+  else if (level === 3) {
+    addQix();
+    addSparc();
+  }
+  else if (level === 4) {
+    addSparc();
+  }
+  else if (level === 5) {
+    addQix();
+    addSparc();
+  }
+  
+  // Reset common game elements
+  resetCommonElements();
+  
+  // Make all sprites visible for gameplay
+  for (let sprite of allSprites) {
+    if (trails.includes(sprite)) {
+      sprite.visible = false;
+    } else {
+      sprite.visible = true;
+    }
+  }
+  
+  // Resume game physics and updates
+  allSprites.autoUpdate = true;
+  world.autoStep = true;
+  
+  // Set game state back to running
+  gameState = runGame;
+}
+// Common reset elements used by both reset functions
+function resetCommonElements() {
   // Reset trail-related variables
   trailStartPoint = null;
   lastTrailSegmentPos = null;
@@ -753,20 +868,16 @@ function resetGame(toIntro = false) {
     trails.collider = 'k';
   }
   currentTrail = [];
-  
-  // Remove existing enemies
-  for (let enemy of qixi) {
-    enemy.remove();
+
+  // Reset hearts
+  if (hearts.length < 3){
+    for (let i = hearts.length; i < 3; i++) {
+      let heart = new hearts.Sprite();
+      heart.x = 50*i + 50;
+      heart.y = 50;
+    }
   }
-  for (let enemy of sparx) {
-    enemy.remove();
-  }
-  
-  // Remove existing hearts
-  for (let heart of hearts) {
-    heart.remove();
-  }
-  
+
   // Remove all borders except the original four
   while (Borders.length > 4) {
     Borders[Borders.length - 1].remove();
@@ -795,13 +906,6 @@ function resetGame(toIntro = false) {
   Borders[3].w = gameField.w;
   Borders[3].h = BORDER_THICKNESS;
   
-  // Recreate hearts
-  for (let x = 0; x < lives; x++) {
-    let heart = new hearts.Sprite();
-    heart.x = 50*x + 50;
-    heart.y = 50;
-  }
-  
   // Reset player position
   player.x = windowWidth / 2;
   player.y = gameField.y + gameField.h / 2;
@@ -810,10 +914,6 @@ function resetGame(toIntro = false) {
   PspeedX = 0;
   PspeedY = 0;
   currentPlayerDirection = null;
-  
-  // Create new enemies
-  let newQix = new qixi.Sprite();
-  let newSparc = new sparx.Sprite();
   
   // Reset game field color
   gameField.color = random(pallete);
@@ -824,30 +924,11 @@ function resetGame(toIntro = false) {
     sprite.velocity.x = 0;
     sprite.velocity.y = 0;
   }
-  
-  // If returning to intro, hide all sprites
-  if (toIntro) {
-    for (let sprite of allSprites) {
-      sprite.visible = false;
-    }
-    gameState = intro;
-  } else {
-    // Make all sprites visible for gameplay (except any residual trails)
-    for (let sprite of allSprites) {
-      if (trails.includes(sprite)) {
-        // Additional check to hide any lingering trail sprites
-        sprite.visible = false;
-      } else {
-        sprite.visible = true;
-      }
-    }
-    // Resume game physics and updates
-    allSprites.autoUpdate = true;
-    world.autoStep = true;
-    // Set game state back to running
-    gameState = runGame;
-  }
 }
+
+
+
+
 
 //---QIX MOVEMENT-----------------------------------------------------------
 function updateQix(qix){
